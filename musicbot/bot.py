@@ -379,22 +379,24 @@ class MusicBot(discord.Client):
         await self.update_now_playing(entry)
         player.skip_state.reset()
 
-        channel = entry.meta.get('channel', None)
+        channel = self.get_channel(self.config.main_channel)
         author = entry.meta.get('author', None)
 
-        if channel and author:
+        if not channel:
+            channel = entry.meta.get('channel', None)
+
+        if channel:
             last_np_msg = self.server_specific_data[channel.server]['last_np_msg']
             if last_np_msg and last_np_msg.channel == channel:
-
                 async for lmsg in self.logs_from(channel, limit=1):
                     if lmsg != last_np_msg and last_np_msg:
                         await self.safe_delete_message(last_np_msg)
                         self.server_specific_data[channel.server]['last_np_msg'] = None
                     break  # This is probably redundant
 
-            if self.config.now_playing_mentions:
+            if self.config.now_playing_mentions and author:
                 newmsg = '%s - your song **%s** is now playing in %s!' % (
-                    entry.meta['author'].mention, entry.title, player.voice_client.channel.name)
+                    author.mention, entry.title, player.voice_client.channel.name)
             else:
                 newmsg = 'Now playing in %s: **%s**' % (
                     player.voice_client.channel.name, entry.title)
@@ -403,6 +405,21 @@ class MusicBot(discord.Client):
                 self.server_specific_data[channel.server]['last_np_msg'] = await self.safe_edit_message(last_np_msg, newmsg, send_if_fail=True)
             else:
                 self.server_specific_data[channel.server]['last_np_msg'] = await self.safe_send_message(channel, newmsg)
+
+            voice_channel = player.voice_client.channel
+
+            if not sum(1 for m in voice_channel.voice_members if m != channel.server.me):
+                if not self.config.auto_pause:
+                    return
+
+                auto_paused = self.server_specific_data[channel.server]['auto_paused']
+
+                if auto_paused:
+                    return
+
+                print("[config:autopause] Pausing (channel empty)")
+                self.server_specific_data[channel.server]['auto_paused'] = True
+                player.pause()
 
     async def on_player_resume(self, entry, **_):
         await self.update_now_playing(entry)
@@ -651,6 +668,16 @@ class MusicBot(discord.Client):
         else:
             print("Not bound to any text channels")
 
+        if self.config.main_channel:
+            main_channel = self.get_channel(self.config.main_channel)
+            print("Main text output channel:")
+            self.safe_print(' - %s/%s' % (main_channel.server.name.strip(), main_channel.name.strip()))
+
+            print()
+
+        else:
+            print("No main channel specified")
+
         if self.config.autojoin_channels:
             chlist = set(self.get_channel(i) for i in self.config.autojoin_channels if i)
             chlist.discard(None)
@@ -712,7 +739,6 @@ class MusicBot(discord.Client):
             if owner_vc:
                 print("Done!", flush=True)  # TODO: Change this to "Joined server/channel"
                 if self.config.auto_playlist:
-                    print("Starting auto-playlist")
                     await self.on_player_finished_playing(await self.get_player(owner_vc))
             else:
                 print("Owner not found in a voice channel, could not autosummon.")
@@ -1551,6 +1577,54 @@ class MusicBot(discord.Client):
         message = '\n'.join(lines)
         return Response(message, delete_after=30)
 
+    async def cmd_q(self, channel, player):
+        """
+        Usage:
+            {command_prefix}queue
+
+        Prints the current song queue.
+        """
+
+        lines = []
+        unlisted = 0
+        andmoretext = '* ... and %s more*' % ('x' * len(player.playlist.entries))
+
+        if player.current_entry:
+            song_progress = str(timedelta(seconds=player.progress)).lstrip('0').lstrip(':')
+            song_total = str(timedelta(seconds=player.current_entry.duration)).lstrip('0').lstrip(':')
+            prog_str = '`[%s/%s]`' % (song_progress, song_total)
+
+            if player.current_entry.meta.get('channel', False) and player.current_entry.meta.get('author', False):
+                lines.append("Now Playing: **%s** added by **%s** %s\n" % (
+                    player.current_entry.title, player.current_entry.meta['author'].name, prog_str))
+            else:
+                lines.append("Now Playing: **%s** %s\n" % (player.current_entry.title, prog_str))
+
+        for i, item in enumerate(player.playlist, 1):
+            if item.meta.get('channel', False) and item.meta.get('author', False):
+                nextline = '`{}.` **{}** added by **{}**'.format(i, item.title, item.meta['author'].name).strip()
+            else:
+                nextline = '`{}.` **{}**'.format(i, item.title).strip()
+
+            currentlinesum = sum(len(x) + 1 for x in lines)  # +1 is for newline char
+
+            if currentlinesum + len(nextline) + len(andmoretext) > DISCORD_MSG_CHAR_LIMIT:
+                if currentlinesum + len(andmoretext):
+                    unlisted += 1
+                    continue
+
+            lines.append(nextline)
+
+        if unlisted:
+            lines.append('\n*... and %s more*' % unlisted)
+
+        if not lines:
+            lines.append(
+                'There are no songs queued! Queue something with {}play.'.format(self.config.command_prefix))
+
+        message = '\n'.join(lines)
+        return Response(message, delete_after=30)
+
     async def cmd_clean(self, message, channel, server, author, search_range=50):
         """
         Usage:
@@ -1962,6 +2036,7 @@ class MusicBot(discord.Client):
                 await self.safe_send_message(message.channel, '```\n%s\n```' % traceback.format_exc())
 
     async def on_voice_state_update(self, before, after):
+
         if not all([before, after]):
             return
 

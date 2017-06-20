@@ -65,6 +65,7 @@ class Config:
         self.owner_id = config.get('Permissions', 'OwnerID', fallback=ConfigDefaults.owner_id)
         self.command_prefix = config.get('Chat', 'CommandPrefix', fallback=ConfigDefaults.command_prefix)
         self.bound_channels = config.get('Chat', 'BindToChannels', fallback=ConfigDefaults.bound_channels)
+        self.main_channel = config.get('Chat', 'MainChannel', fallback=ConfigDefaults.main_channel)
         self.autojoin_channels =  config.get('Chat', 'AutojoinChannels', fallback=ConfigDefaults.autojoin_channels)
 
         self.default_volume = config.getfloat('MusicBot', 'DefaultVolume', fallback=ConfigDefaults.default_volume)
@@ -146,6 +147,14 @@ class Config:
                 print("[Warning] BindToChannels data invalid, will not bind to any channels")
                 self.bound_channels = set()
 
+        if self.main_channel and self.main_channel.isdigit():
+            if int(self.owner_id) < 10000:
+                print("[Warning] MainChannel data invalid, will not post to any channel")
+                self.main_channel = set()
+        else:
+            print("[Warning] MainChannel data invalid, will not post to any channel")
+            self.main_channel = set()
+
         if self.autojoin_channels:
             try:
                 self.autojoin_channels = set(x for x in self.autojoin_channels.split() if x)
@@ -174,6 +183,7 @@ class ConfigDefaults:
     owner_id = None
     command_prefix = '!'
     bound_channels = set()
+    main_channel = set()
     autojoin_channels = set()
 
     default_volume = 0.15
