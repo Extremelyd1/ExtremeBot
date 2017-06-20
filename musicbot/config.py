@@ -152,7 +152,7 @@ class Config:
                 print("[Warning] MainChannel data invalid, will not post to any channel")
                 self.main_channel = set()
         else:
-            print("[Warning] MainChannel data invalid, will not post to any channel")
+            print("MainChannel data missing, will not post to any channel")
             self.main_channel = set()
 
         if self.autojoin_channels:

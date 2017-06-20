@@ -39,6 +39,13 @@ class Permissions:
                 raise RuntimeError("Unable to copy config/example_permissions.ini to %s: %s" % (config_file, e))
 
         self.default_group = PermissionGroup('Default', self.config['Default'])
+
+        if not self.default_group:
+            raise exceptions.HelpfulError(
+                "No default group specified.  "
+                "Make sure to define at least the default group in permissions.ini"
+            )
+
         self.groups = set()
 
         for section in self.config.sections():

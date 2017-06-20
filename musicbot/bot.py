@@ -379,11 +379,14 @@ class MusicBot(discord.Client):
         await self.update_now_playing(entry)
         player.skip_state.reset()
 
-        channel = self.get_channel(self.config.main_channel)
-        author = entry.meta.get('author', None)
+        channel = None
 
-        if not channel:
+        if self.config.main_channel:
+            channel = self.get_channel(self.config.main_channel)
+        else:
             channel = entry.meta.get('channel', None)
+            
+        author = entry.meta.get('author', None)
 
         if channel:
             last_np_msg = self.server_specific_data[channel.server]['last_np_msg']
