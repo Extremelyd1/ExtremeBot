@@ -34,7 +34,8 @@ from .opus_loader import load_opus_lib
 from .constants import VERSION as BOTVERSION
 from .constants import DISCORD_MSG_CHAR_LIMIT, AUDIO_CACHE_PATH
 
-from .commands import commandController
+from .commands.command import Command
+from .commands.queue import QueueCommand
 
 load_opus_lib()
 
@@ -67,6 +68,7 @@ class Response:
 
 class MusicBot(discord.Client):
     def __init__(self, config_file=ConfigDefaults.options_file, perms_file=PermissionsDefaults.perms_file):
+
         self.players = {}
         self.the_voice_clients = {}
         self.locks = defaultdict(asyncio.Lock)
@@ -83,6 +85,9 @@ class MusicBot(discord.Client):
         self.exit_signal = None
         self.init_ok = False
         self.cached_client_id = None
+
+        # Register commands
+        Command.register_command(QueueCommand())
 
         if not self.autoplaylist:
             print("Warning: Autoplaylist is empty, disabling.")
@@ -1919,8 +1924,8 @@ class MusicBot(discord.Client):
         command, *args = message_content.split()  # Uh, doesn't this break prefixes with spaces in them (it doesn't, config parser already breaks them)
         command = command[len(self.config.command_prefix):].lower().strip()
 
-        if commandController.has_command(command):
-            command = commandController.get_command(command)
+        if Command.has_command(command):
+            command = Command.get_command(command)
             command.bot = self
             command.message = message
             command.player = await self.get_player(message.channel)

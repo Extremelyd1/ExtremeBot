@@ -1,11 +1,12 @@
 from .command import Command
 from datetime import timedelta
 
-class QCommand(Command):
+class QueueCommand(Command):
     """docstring for QCommand."""
     def __init__(self):
         super().__init__()
-        self.trigger = 'q'
+        self.trigger = 'queue'
+        self.aliases = ['q', 'queued']
 
     async def run(self):
         lines = []

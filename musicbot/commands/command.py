@@ -1,5 +1,7 @@
 class Command:
 
+    commands = []
+
     def __init__(self):
         self.trigger = None
         self.aliases = []
@@ -14,3 +16,21 @@ class Command:
 
     async def run(self):
         print("Something went wrong")
+
+    @staticmethod
+    def register_command(command):
+        # TODO: perform checks on trigger and aliases
+        Command.commands.append(command)
+
+    @staticmethod
+    def has_command(command_string):
+        return Command.get_command(command_string)
+
+    @staticmethod
+    def get_command(command_string):
+        for command in Command.commands:
+            if command.trigger == command_string:
+                return command
+            elif command_string in command.aliases:
+                return command
+        return None
