@@ -34,6 +34,7 @@ from .opus_loader import load_opus_lib
 from .constants import VERSION as BOTVERSION
 from .constants import DISCORD_MSG_CHAR_LIMIT, AUDIO_CACHE_PATH
 
+from .commands import commandController
 
 load_opus_lib()
 
@@ -385,7 +386,7 @@ class MusicBot(discord.Client):
             channel = self.get_channel(self.config.main_channel)
         else:
             channel = entry.meta.get('channel', None)
-            
+
         author = entry.meta.get('author', None)
 
         if channel:
@@ -1903,13 +1904,6 @@ class MusicBot(discord.Client):
         if self.config.bound_channels and message.channel.id not in self.config.bound_channels and not message.channel.is_private:
             return  # if I want to log this I just move it under the prefix check
 
-        command, *args = message_content.split()  # Uh, doesn't this break prefixes with spaces in them (it doesn't, config parser already breaks them)
-        command = command[len(self.config.command_prefix):].lower().strip()
-
-        handler = getattr(self, 'cmd_%s' % command, None)
-        if not handler:
-            return
-
         if message.channel.is_private:
             if not (message.author.id == self.config.owner_id and command == 'joinserver'):
                 await self.send_message(message.channel, 'You cannot use this bot in private messages.')
@@ -1921,6 +1915,24 @@ class MusicBot(discord.Client):
 
         else:
             self.safe_print("[Command] {0.id}/{0.name} ({1})".format(message.author, message_content))
+
+        command, *args = message_content.split()  # Uh, doesn't this break prefixes with spaces in them (it doesn't, config parser already breaks them)
+        command = command[len(self.config.command_prefix):].lower().strip()
+
+        if commandController.has_command(command):
+            command = commandController.get_command(command)
+            command.bot = self
+            command.message = message
+            command.player = await self.get_player(message.channel)
+            command.permissions = self.permissions.for_user(message.author)
+            command.user_mentions = list(map(message.server.get_member, message.raw_mentions))
+            command.channel_mentions = list(map(message.server.get_channel, message.raw_channel_mentions))
+            command.voice_channel = message.server.me.voice_channel
+            command.leftover_args = args
+            await command.run()
+
+        return
+        # Code below can partially be disregarded
 
         user_permissions = self.permissions.for_user(message.author)
 
