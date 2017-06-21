@@ -8,5 +8,5 @@ dectalk/
 discord.log
 config/options.ini
 config/permissions.ini
-autoplaylist.txt
+config/autoplaylist.txt
 run.bat
