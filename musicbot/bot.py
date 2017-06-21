@@ -1928,6 +1928,9 @@ class MusicBot(discord.Client):
             command = Command.get_command(command)
             command.bot = self
             command.message = message
+            command.channel = message.channel
+            command.author = message.author
+            command.server = message.server
             command.player = await self.get_player(message.channel)
             command.permissions = self.permissions.for_user(message.author)
             command.user_mentions = list(map(message.server.get_member, message.raw_mentions))
