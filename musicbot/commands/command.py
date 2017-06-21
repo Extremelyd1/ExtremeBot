@@ -1,3 +1,7 @@
+import sys
+import importlib.util
+import inspect
+
 class Command:
     """
     The super Command class. All commands should extend this class. It provided
@@ -39,15 +43,66 @@ class Command:
         command -- The command to register
         """
         # Check if trigger and aliases are unique
+        #print("start check: " + command.trigger)
         for _command in Command.commands:
+            #print(_command)
+            #print(_command.trigger)
             if _command.trigger == command.trigger:
+                #print("triggered")
                 print("ERROR: Command %s and %s have the same trigger. Disregarding the first." % command.__class__.__name__, _command.__class__.__name__)
             elif set(_command.aliases) & set(command.aliases):
                 print("ERROR: Command %s and %s have (partially) the same aliases. Disregarding the first" % command.__class__.__name__, _command.__class__.__name__)
 
         # Register command
-        print("Registered command %s" % command.__class__.__name__)
+        #print("Registered command %s" % command.__class__.__name__)
         Command.commands.append(command)
+
+    @staticmethod
+    def register_all_commands():
+        toLoad = ['Play', 'Queue', 'Clean', 'Clear', 'Blacklist',
+                  'Restart', 'Disconnect', 'Shutdown',
+                  'Skip', 'NowPlaying', 'Pause', 'Resume',
+                  'Shuffle', 'ListIds', 'Summon', 'Volume',
+                  'Pldump', 'Perms']
+
+        Command.commands = []
+
+        for commandName in toLoad:
+
+            #print(commandName)
+
+            #print('Importing: ' + commandName + 'Command' + ' from ' + 'musicbot/commands/' + commandName.lower() + '.py')
+
+            spec = importlib.util.spec_from_file_location(commandName + 'Command', 'musicbot/commands/' + commandName.lower() + '.py')
+
+            #print('Spec: ')
+            #print(spec)
+
+            module = importlib.util.module_from_spec(spec)
+
+            #print('Module: ')
+            #print(module)
+
+            spec.loader.exec_module(module)
+
+            #print('Module after loader: ')
+            #print(module)
+
+            commandClass = None
+
+            for name in dir(module):
+                obj = getattr(module, name)
+                try:
+                    if issubclass(obj, Command) and not obj == Command:
+                        commandClass = obj
+                        break
+                except TypeError:
+                    pass
+
+            #print('CommandClass: ')
+            #print(commandClass)
+
+            Command.register_command(commandClass())
 
     @staticmethod
     def has_command(command_string):

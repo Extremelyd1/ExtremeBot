@@ -1,8 +1,9 @@
-from .command import Command
 from datetime import timedelta
+from musicbot.commands.command import Command
+from musicbot.constants import DISCORD_MSG_CHAR_LIMIT
 
 class QueueCommand(Command):
-    """docstring for QCommand."""
+    """docstring for QueueCommand."""
     def __init__(self):
         super().__init__()
         self.trigger = 'queue'
@@ -32,7 +33,6 @@ class QueueCommand(Command):
 
             currentlinesum = sum(len(x) + 1 for x in lines)  # +1 is for newline char
 
-            # TODO: DISCORD_MSG_CHAR_LIMIT not defined
             if currentlinesum + len(nextline) + len(andmoretext) > DISCORD_MSG_CHAR_LIMIT:
                 if currentlinesum + len(andmoretext):
                     unlisted += 1
@@ -48,4 +48,9 @@ class QueueCommand(Command):
                 'There are no songs queued! Queue something with {}play.'.format(self.config.command_prefix))
 
         message = '\n'.join(lines)
-        await self.bot.send_message(self.message.channel, message)
+        await self.bot.safe_send_message(
+            self.message.channel,
+            message,
+            expire_in=30 if bot.config.delete_messages else 0,
+            also_delete=message if bot.config.delete_invoking else None
+        )
