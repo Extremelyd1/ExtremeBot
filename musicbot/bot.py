@@ -1141,28 +1141,28 @@ class MusicBot(discord.Client):
 
         try:
 
-            command, *args = message_content.split()  # Uh, doesn't this break prefixes with spaces in them (it doesn't, config parser already breaks them)
-            command = command[len(self.config.command_prefix):].lower().strip()
+            commandLabel, *args = message_content.split()  # Uh, doesn't this break prefixes with spaces in them (it doesn't, config parser already breaks them)
+            commandLabel = commandLabel[len(self.config.command_prefix):].lower().strip()
 
-            if user_permissions.ignore_non_voice and command in user_permissions.ignore_non_voice:
+            if user_permissions.ignore_non_voice and commandLabel in user_permissions.ignore_non_voice:
                 await self._check_ignore_non_voice(message)
 
             if message.author.id != self.config.owner_id:
-                if user_permissions.command_whitelist and command not in user_permissions.command_whitelist:
+                if user_permissions.command_whitelist and commandLabel not in user_permissions.command_whitelist:
                     raise exceptions.PermissionsError(
                         "This command is not enabled for your group (%s)." % user_permissions.name,
                         expire_in=20)
 
-                elif user_permissions.command_blacklist and command in user_permissions.command_blacklist:
+                elif user_permissions.command_blacklist and commandLabel in user_permissions.command_blacklist:
                     raise exceptions.PermissionsError(
                         "This command is disabled for your group (%s)." % user_permissions.name,
                         expire_in=20)
 
-            if Command.has_command(command):
+            if Command.has_command(commandLabel):
                 # This returned the class
-                command = Command.get_command(command)
+                commandClass = Command.get_command(commandLabel)
                 # Instantiate the class
-                command = command()
+                command = commandClass()
 
                 # Set all variables in the class
                 command.bot = self
