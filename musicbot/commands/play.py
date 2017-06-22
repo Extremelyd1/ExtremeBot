@@ -14,7 +14,7 @@ class PlayCommand(Command):
 
     async def run(self):
 
-        print(self.leftover_args)
+        #print(self.leftover_args)
 
         if len(self.leftover_args) == 0:
             # show help message

@@ -1,4 +1,4 @@
-from .command import Command
+from musicbot.commands.command import Command
 
 class PermsCommand(Command):
     """docstring for PermsCommand."""

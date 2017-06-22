@@ -59,11 +59,8 @@ class Command:
 
     @staticmethod
     def register_all_commands():
-        toLoad = ['Play', 'Queue', 'Clean', 'Clear', 'Blacklist',
-                  'Restart', 'Disconnect', 'Shutdown',
-                  'Skip', 'NowPlaying', 'Pause', 'Resume',
-                  'Shuffle', 'ListIds', 'Summon', 'Volume',
-                  'Pldump', 'Perms']
+        toLoad = ['Play', 'Search', 'Queue', 'Clean', 'Clear', 'Blacklist', 'Restart', 'Disconnect', 'Shutdown', 'Skip',
+		'NowPlaying', 'Pause', 'Resume', 'Shuffle', 'ListIds', 'Summon', 'Volume', 'Pldump', 'Perms', 'Id']
 
         Command.commands = []
 

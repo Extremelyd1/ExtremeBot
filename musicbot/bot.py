@@ -798,19 +798,6 @@ class MusicBot(discord.Client):
 
             return Response(helpmsg, reply=True, delete_after=60)
 
-    async def cmd_id(self, author, user_mentions):
-        """
-        Usage:
-            {command_prefix}id [@user]
-
-        Tells the user their id or the id of another user.
-        """
-        if not user_mentions:
-            return Response('your id is `%s`' % author.id, reply=True, delete_after=35)
-        else:
-            usr = user_mentions[0]
-            return Response("%s's id is `%s`" % (usr.name, usr.id), reply=True, delete_after=35)
-
     @owner_only
     async def cmd_joinserver(self, message, server_link=None):
         """
@@ -1058,26 +1045,6 @@ class MusicBot(discord.Client):
                 await self.safe_delete_message(response_message)
 
         return Response("Oh well :frowning:", delete_after=30)
-
-    async def cmd_perms(self, author, channel, server, permissions):
-        """
-        Usage:
-            {command_prefix}perms
-
-        Sends the user a list of their permissions.
-        """
-
-        lines = ['Command permissions in %s\n' % server.name, '```', '```']
-
-        for perm in permissions.__dict__:
-            if perm in ['user_list'] or permissions.__dict__[perm] == set():
-                continue
-
-            lines.insert(len(lines) - 1, "%s: %s" % (perm, permissions.__dict__[perm]))
-
-        await self.send_message(author, '\n'.join(lines))
-        return Response(":mailbox_with_mail:", delete_after=20)
-
 
     @owner_only
     async def cmd_setname(self, leftover_args, name):
