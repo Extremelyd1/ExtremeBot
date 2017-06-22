@@ -1,7 +1,7 @@
 from musicbot.commands.command import Command
 
 class DisconnectCommand(Command):
-     """
+    """
     Usage:
         {command_prefix}disconnect
     Disconnects the bot from the voice channel

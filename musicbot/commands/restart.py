@@ -2,7 +2,7 @@ from musicbot import exceptions
 from musicbot.commands.command import Command
 
 class RestartCommand(Command):
-     """
+    """
     Usage:
         {command_prefix}restart
     Restarts the bot.

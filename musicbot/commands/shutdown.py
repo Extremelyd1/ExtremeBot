@@ -2,7 +2,7 @@ from musicbot.commands.command import Command
 from musicbot import exceptions
 
 class ShutdownCommand(Command):
-     """
+    """
     Usage:
         {command_prefix}shutdown
     Shuts the bot down.

@@ -1,4 +1,6 @@
 import shlex
+
+from textwrap import dedent
 from musicbot import exceptions
 from musicbot.commands.command import Command
 
@@ -35,9 +37,8 @@ class SearchCommand(Command):
             if not self.leftover_args:
                 raise exceptions.CommandError(
                     "Please specify a search query.\n%s" % dedent(
-                        SearchCommand.__doc__.format(command_prefix=self.config.command_prefix)),
-                    expire_in=30,
-                    also_delete=self.message
+                        SearchCommand.__doc__.format(command_prefix=self.bot.config.command_prefix)),
+                    expire_in=30
                 )
 
         argcheck()
