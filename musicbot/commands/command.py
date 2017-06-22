@@ -18,7 +18,7 @@ class Command:
         self.bot = None
         self.message = None
         self.channel = None
-        self.auther = None
+        self.author = None
         self.server = None
         self.player = None
         self.permissions = None
@@ -40,15 +40,11 @@ class Command:
         Register a new command
 
         Keyword arguments:
-        command -- The command to register
+        command -- The command class to register
         """
-        # Check if trigger and aliases are unique
-        #print("start check: " + command.trigger)
+
         for _command in Command.commands:
-            #print(_command)
-            #print(_command.trigger)
             if _command.trigger == command.trigger:
-                #print("triggered")
                 print("ERROR: Command %s and %s have the same trigger. Disregarding the first." % command.__class__.__name__, _command.__class__.__name__)
             elif set(_command.aliases) & set(command.aliases):
                 print("ERROR: Command %s and %s have (partially) the same aliases. Disregarding the first" % command.__class__.__name__, _command.__class__.__name__)
@@ -64,42 +60,36 @@ class Command:
 
         Command.commands = []
 
+        # Loop through all command names to load them
         for commandName in toLoad:
 
-            #print(commandName)
-
-            #print('Importing: ' + commandName + 'Command' + ' from ' + 'musicbot/commands/' + commandName.lower() + '.py')
-
+            # Get spec from file location
             spec = importlib.util.spec_from_file_location(commandName + 'Command', 'musicbot/commands/' + commandName.lower() + '.py')
 
-            #print('Spec: ')
-            #print(spec)
-
+            # Get module from spec, module is the file.py itself
             module = importlib.util.module_from_spec(spec)
 
-            #print('Module: ')
-            #print(module)
-
+            # I think this imports the file so that we can use it
             spec.loader.exec_module(module)
-
-            #print('Module after loader: ')
-            #print(module)
 
             commandClass = None
 
+            # For all names that are within the module
             for name in dir(module):
+                # Get the object corresponding with that name
                 obj = getattr(module, name)
                 try:
+                    # It has to be the class itself, so a subclass of Command,
+                    # but not Command itself, otherwise we get the Command class
+                    # instead of NameCommand
                     if issubclass(obj, Command) and not obj == Command:
                         commandClass = obj
                         break
                 except TypeError:
                     pass
 
-            #print('CommandClass: ')
-            #print(commandClass)
-
-            Command.register_command(commandClass())
+            # This is the class within the module, that we can now register
+            Command.register_command(commandClass)
 
     @staticmethod
     def has_command(command_string):
@@ -121,6 +111,9 @@ class Command:
         command_string -- Either the trigger or an alias of the command the user
                           tries to trigger
         """
+
+        # Since we are dealing with classes,
+        # we return the class to the method caller
         for command in Command.commands:
             if command.trigger == command_string:
                 return command

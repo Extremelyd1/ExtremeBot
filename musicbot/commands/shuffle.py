@@ -4,10 +4,12 @@ from musicbot.commands.command import Command
 
 class ShuffleCommand(Command):
     """docstring for ShuffleCommand."""
+
+    trigger = 'shuffle'
+    aliases = []
+
     def __init__(self):
         super().__init__()
-        self.trigger = 'shuffle'
-        self.aliases = []
 
     async def run(self):
         self.player.playlist.shuffle()

@@ -3,10 +3,12 @@ from musicbot import exceptions
 
 class ResumeCommand(Command):
     """docstring for ResumeCommand."""
+
+    trigger = 'resume'
+    aliases = []
+
     def __init__(self):
         super().__init__()
-        self.trigger = 'resume'
-        self.aliases = []
 
     async def run(self):
         if self.player.is_paused:

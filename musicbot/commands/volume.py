@@ -3,10 +3,12 @@ from musicbot import exceptions
 
 class VolumeCommand(Command):
     """docstring for VolumeCommand."""
+
+    trigger = 'volume'
+    aliases = ['vol']
+
     def __init__(self):
         super().__init__()
-        self.trigger = 'volume'
-        self.aliases = ['vol']
 
     async def run(self):
 

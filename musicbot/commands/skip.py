@@ -3,10 +3,12 @@ from musicbot import exceptions
 
 class SkipCommand(Command):
     """docstring for SkipCommand."""
+
+    trigger = 'skip'
+    aliases = []
+
     def __init__(self):
         super().__init__()
-        self.trigger = 'skip'
-        self.aliases = []
 
     async def run(self):
         if self.player.is_stopped:

@@ -2,10 +2,12 @@ from musicbot.commands.command import Command
 
 class DisconnectCommand(Command):
     """docstring for DisconnectCommand."""
+
+    trigger = 'disconnect'
+    aliases = ['dc']
+
     def __init__(self):
         super().__init__()
-        self.trigger = 'disconnect'
-        self.aliases = ['dc']
 
     async def run(self):
         await self.bot.disconnect_voice_client(self.server)

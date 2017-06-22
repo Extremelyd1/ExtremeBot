@@ -7,10 +7,12 @@ from musicbot.commands.command import Command
 
 class PlayCommand(Command):
     """docstring for PlayCommand."""
+
+    trigger = 'play'
+    aliases = ['p']
+
     def __init__(self):
         super().__init__()
-        self.trigger = 'play'
-        self.aliases = ['p']
 
     async def run(self):
 

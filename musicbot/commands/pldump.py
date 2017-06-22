@@ -5,10 +5,12 @@ from collections import defaultdict
 
 class PldumpCommand(Command):
     """docstring for PldumpCommand."""
+
+    trigger = 'pldump'
+    aliases = ['playlistdump']
+
     def __init__(self):
         super().__init__()
-        self.trigger = 'pldump'
-        self.aliases = ['playlistdump']
 
     async def run(self):
 

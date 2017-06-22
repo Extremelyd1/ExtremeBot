@@ -3,10 +3,12 @@ from musicbot import exceptions
 
 class ClearCommand(Command):
     """docstring for ClearCommand."""
+
+    trigger = 'clear'
+    aliases = []
+
     def __init__(self):
         super().__init__()
-        self.trigger = 'clear'
-        self.aliases = []
 
     async def run(self):
         self.player.playlist.clear()

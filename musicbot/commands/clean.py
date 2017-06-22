@@ -5,10 +5,12 @@ from musicbot.commands.command import Command
 
 class CleanCommand(Command):
     """docstring for CleanCommand."""
+
+    trigger = 'clean'
+    aliases = ['purge']
+
     def __init__(self):
         super().__init__()
-        self.trigger = 'clean'
-        self.aliases = ['purge']
 
     async def run(self):
         if not len(self.leftover_args) in [0, 1]:

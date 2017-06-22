@@ -1159,7 +1159,12 @@ class MusicBot(discord.Client):
                         expire_in=20)
 
             if Command.has_command(command):
+                # This returned the class
                 command = Command.get_command(command)
+                # Instantiate the class
+                command = command()
+
+                # Set all variables in the class
                 command.bot = self
                 command.message = message
                 command.channel = message.channel
@@ -1171,6 +1176,8 @@ class MusicBot(discord.Client):
                 command.channel_mentions = list(map(message.server.get_channel, message.raw_channel_mentions))
                 command.voice_channel = message.server.me.voice_channel
                 command.leftover_args = args
+
+                # Run the command
                 await command.run()
 
         except (exceptions.CommandError, exceptions.HelpfulError, exceptions.ExtractionError) as e:

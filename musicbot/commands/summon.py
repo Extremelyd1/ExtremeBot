@@ -3,10 +3,12 @@ from musicbot import exceptions
 
 class SummonCommand(Command):
     """docstring for SummonCommand."""
+
+    trigger = 'summon'
+    aliases = []
+
     def __init__(self):
         super().__init__()
-        self.trigger = 'summon'
-        self.aliases = []
 
     async def run(self):
         if not self.author.voice_channel:

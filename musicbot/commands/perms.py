@@ -2,11 +2,13 @@ from musicbot.commands.command import Command
 
 class PermsCommand(Command):
     """docstring for PermsCommand."""
+
+    trigger = 'perms'
+    aliases = ['permissions', 'permission', 'perm']
+
     def __init__(self):
         super().__init__()
-        self.trigger = 'perms'
-        self.aliases = ['permissions', 'permission', 'perm']
-
+        
     async def run(self):
         lines = ['Command permissions in %s\n' % self.server.name, '```', '```']
 

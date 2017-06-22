@@ -4,10 +4,12 @@ from musicbot.commands.command import Command
 
 class SearchCommand(Command):
     """docstring for SearchCommand."""
+
+    trigger = 'search'
+    aliases = []
+
     def __init__(self):
         super().__init__()
-        self.trigger = 'search'
-        self.aliases = []
 
     async def run(self):
         if self.permissions.max_songs and self.player.playlist.count_for_user(author) > self.permissions.max_songs:
@@ -19,13 +21,16 @@ class SearchCommand(Command):
         def argcheck():
             if not self.leftover_args:
 				# requires implementation of help
-				"""
-				raise exceptions.CommandError(
+                raise exceptions.CommandError(
+                    'Please specify a search query.',
+                    expire_in=30,
+                    also_delete=self.message
+                )
+                """raise exceptions.CommandError(
                     "Please specify a search query.\n%s" % dedent(
                         self.cmd_search.__doc__.format(command_prefix=self.config.command_prefix)),
                     expire_in=60
-                )
-				"""
+                )"""
 
         argcheck()
 
@@ -82,7 +87,7 @@ class SearchCommand(Command):
             await self.bot.safe_delete_message(search_msg)
 
         if not info:
-			await self.bot.safe_send_message(
+            await self.bot.safe_send_message(
                 self.channel,
                 'No videos found.',
                 expire_in=30,
@@ -93,8 +98,8 @@ class SearchCommand(Command):
         def check(m):
             return (
                 m.content.lower()[0] in 'yn' or
-                # hardcoded function name weeee
-                m.content.lower().startswith('{}{}'.format(self.bot.config.command_prefix, 'search')) or
+                m.content.lower().startswith('{}{}'.format(self.bot.config.command_prefix, SearchCommand.trigger)) or
+                m.content.lower().startswith('{}{}'.format(self.bot.config.command_prefix, (alias for alias in SearchCommand.aliases))) or
                 m.content.lower().startswith('exit'))
 
         for e in info['entries']:
@@ -107,13 +112,13 @@ class SearchCommand(Command):
             if not response_message:
                 await self.bot.safe_delete_message(result_message)
                 await self.bot.safe_delete_message(confirm_message)
-				await self.bot.safe_send_message(
-	                self.channel,
-	                'Ok nevermind.',
-	                expire_in=30,
-	                also_delete=self.message
+                await self.bot.safe_send_message(
+                    self.channel,
+                    'Ok nevermind.',
+                    expire_in=30,
+                    also_delete=self.message
 	            )
-	            return
+                return
 
             # They started a new search query so lets clean up and bugger off
             elif response_message.content.startswith(self.bot.config.command_prefix) or \
@@ -121,6 +126,11 @@ class SearchCommand(Command):
 
                 await self.bot.safe_delete_message(result_message)
                 await self.bot.safe_delete_message(confirm_message)
+                await self.bot.safe_delete_message(self.message)
+
+                if response_message.content.lower().startswith('exit'):
+                    await self.bot.safe_delete_message(response_message)
+
                 return
 
             if response_message.content.lower().startswith('y'):
@@ -128,27 +138,31 @@ class SearchCommand(Command):
                 await self.bot.safe_delete_message(confirm_message)
                 await self.bot.safe_delete_message(response_message)
 
-				Command playCommand = Command.get_command('play')
-				playCommand.player = self.player
-				playCommand.channel = self.channel
-				playCommand.author = self.author
-				playCommand.permissions = self.permissions
-				playCommand.leftover_args = [e['webpage_url']]
-				await playCommand.run()
+                playCommand = Command.get_command('play')
+                playCommand.player = self.player
+                playCommand.channel = self.channel
+                playCommand.author = self.author
+                playCommand.permissions = self.permissions
+                playCommand.leftover_args = [e['webpage_url']]
 
-				await self.bot.safe_send_message(
-	                self.channel,
-	                'Alright, coming right up!',
-	                expire_in=30
+                await self.bot.safe_send_message(
+                    self.channel,
+                    'Alright, coming right up!',
+                    expire_in=30,
+                    also_delete=self.message
 	            )
-	            return
+
+                await playCommand.run()
+
+                return
             else:
                 await self.bot.safe_delete_message(result_message)
                 await self.bot.safe_delete_message(confirm_message)
                 await self.bot.safe_delete_message(response_message)
 
-		await self.bot.safe_send_message(
-			self.channel,
-			'Oh well :frowning:',
-			expire_in=30
-		)
+        await self.bot.safe_send_message(
+            self.channel,
+            'Oh well :frowning:',
+            expire_in=30,
+            also_delete=self.message
+        )

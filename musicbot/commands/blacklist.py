@@ -4,10 +4,12 @@ from musicbot.utils import write_file
 
 class BlacklistCommand(Command):
     """docstring for BlacklistCommand."""
+
+    trigger = 'blacklist'
+    aliases = ['bl', 'blist']
+
     def __init__(self):
         super().__init__()
-        self.trigger = 'blacklist'
-        self.aliases = ['bl', 'blist']
 
     async def run(self):
         if not self.user_mentions:

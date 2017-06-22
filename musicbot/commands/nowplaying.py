@@ -3,10 +3,12 @@ from musicbot.commands.command import Command
 
 class NowPlayingCommand(Command):
     """docstring for NowPlayingCommand."""
+
+    trigger = 'np'
+    aliases = ['nowplaying']
+
     def __init__(self):
         super().__init__()
-        self.trigger = 'np'
-        self.aliases = ['nowplaying']
 
     async def run(self):
         if self.player.current_entry:

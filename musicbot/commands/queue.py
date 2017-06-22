@@ -4,10 +4,12 @@ from musicbot.constants import DISCORD_MSG_CHAR_LIMIT
 
 class QueueCommand(Command):
     """docstring for QueueCommand."""
+
+    trigger = 'queue'
+    aliases = ['q', 'queued']
+
     def __init__(self):
         super().__init__()
-        self.trigger = 'queue'
-        self.aliases = ['q', 'queued']
 
     async def run(self):
         lines = []

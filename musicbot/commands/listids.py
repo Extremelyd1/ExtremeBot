@@ -5,10 +5,12 @@ from musicbot import exceptions
 
 class ListIdsCommand(Command):
     """docstring for ListIdsCommand."""
+
+    trigger = 'listids'
+    aliases = []
+
     def __init__(self):
         super().__init__()
-        self.trigger = 'listids'
-        self.aliases = []
 
     async def run(self):
 
