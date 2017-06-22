@@ -2,7 +2,11 @@ from musicbot.commands.command import Command
 from musicbot import exceptions
 
 class SummonCommand(Command):
-    """docstring for SummonCommand."""
+    """
+    Usage:
+        {command_prefix}summon
+    Call the bot to the summoner's voice channel.
+    """
 
     trigger = 'summon'
     aliases = []

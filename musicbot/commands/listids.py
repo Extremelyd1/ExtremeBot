@@ -4,7 +4,12 @@ from musicbot.commands.command import Command
 from musicbot import exceptions
 
 class ListIdsCommand(Command):
-    """docstring for ListIdsCommand."""
+    """
+    Usage:
+        {command_prefix}listids [categories]
+    Lists the ids for various things.  Categories are:
+       all, users, roles, channels
+    """
 
     trigger = 'listids'
     aliases = []

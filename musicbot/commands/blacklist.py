@@ -3,7 +3,12 @@ from musicbot.commands.command import Command
 from musicbot.utils import write_file
 
 class BlacklistCommand(Command):
-    """docstring for BlacklistCommand."""
+    """
+    Usage:
+        {command_prefix}blacklist [ + | - | add | remove ] @UserName [@UserName2 ...]
+    Add or remove users to the blacklist.
+    Blacklisted users are forbidden from using bot commands.
+    """
 
     trigger = 'blacklist'
     aliases = ['bl', 'blist']

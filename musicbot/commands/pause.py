@@ -2,7 +2,11 @@ from musicbot.commands.command import Command
 from musicbot import exceptions
 
 class PauseCommand(Command):
-    """docstring for PauseCommand."""
+    """
+    Usage:
+        {command_prefix}pause
+    Pauses playback of the current song.
+    """
 
     trigger = 'pause'
     aliases = []

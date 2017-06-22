@@ -2,7 +2,11 @@ from musicbot.commands.command import Command
 from musicbot import exceptions
 
 class ShutdownCommand(Command):
-    """docstring for ShutdownCommand."""
+     """
+    Usage:
+        {command_prefix}shutdown
+    Shuts the bot down.
+    """
 
     trigger = 'shutdown'
     aliases = ['terminate']

@@ -2,7 +2,12 @@ from musicbot.commands.command import Command
 from musicbot import exceptions
 
 class VolumeCommand(Command):
-    """docstring for VolumeCommand."""
+    """
+    Usage:
+        {command_prefix}volume (+/-)[volume]
+    Sets the playback volume. Accepted values are from 1 to 100.
+    Putting + or - before the volume will make the volume change relative to the current volume.
+    """
 
     trigger = 'volume'
     aliases = ['vol']

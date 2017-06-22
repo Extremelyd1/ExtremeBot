@@ -1,10 +1,15 @@
 import asyncio
+import discord
 
 from musicbot import exceptions
 from musicbot.commands.command import Command
 
 class CleanCommand(Command):
-    """docstring for CleanCommand."""
+    """
+    Usage:
+        {command_prefix}clean [range]
+    Removes up to [range] messages the bot has posted in chat. Default: 50, Max: 1000
+    """
 
     trigger = 'clean'
     aliases = ['purge']

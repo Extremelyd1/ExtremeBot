@@ -1,7 +1,11 @@
 from musicbot.commands.command import Command
 
 class DisconnectCommand(Command):
-    """docstring for DisconnectCommand."""
+     """
+    Usage:
+        {command_prefix}disconnect
+    Disconnects the bot from the voice channel
+    """
 
     trigger = 'disconnect'
     aliases = ['dc']

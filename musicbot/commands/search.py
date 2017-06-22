@@ -3,7 +3,20 @@ from musicbot import exceptions
 from musicbot.commands.command import Command
 
 class SearchCommand(Command):
-    """docstring for SearchCommand."""
+    """
+    Usage:
+        {command_prefix}search [service] [number] query
+    Searches a service for a video and adds it to the queue.
+    - service: any one of the following services:
+        - youtube (yt) (default if unspecified)
+        - soundcloud (sc)
+        - yahoo (yh)
+    - number: return a number of video results and waits for user to choose one
+      - defaults to 1 if unspecified
+      - note: If your search query starts with a number,
+              you must put your query in quotes
+        - ex: {command_prefix}search 2 "I ran seagulls"
+    """
 
     trigger = 'search'
     aliases = []
@@ -20,17 +33,12 @@ class SearchCommand(Command):
 
         def argcheck():
             if not self.leftover_args:
-				# requires implementation of help
                 raise exceptions.CommandError(
-                    'Please specify a search query.',
+                    "Please specify a search query.\n%s" % dedent(
+                        SearchCommand.__doc__.format(command_prefix=self.config.command_prefix)),
                     expire_in=30,
                     also_delete=self.message
                 )
-                """raise exceptions.CommandError(
-                    "Please specify a search query.\n%s" % dedent(
-                        self.cmd_search.__doc__.format(command_prefix=self.config.command_prefix)),
-                    expire_in=60
-                )"""
 
         argcheck()
 

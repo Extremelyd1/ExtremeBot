@@ -49,14 +49,16 @@ class Command:
             elif set(_command.aliases) & set(command.aliases):
                 print("ERROR: Command %s and %s have (partially) the same aliases. Disregarding the first" % command.__class__.__name__, _command.__class__.__name__)
 
+        print(command.__doc__)
+
         # Register command
         #print("Registered command %s" % command.__class__.__name__)
         Command.commands.append(command)
 
     @staticmethod
     def register_all_commands():
-        toLoad = ['Play', 'Search', 'Queue', 'Clean', 'Clear', 'Blacklist', 'Restart', 'Disconnect', 'Shutdown', 'Skip',
-		'NowPlaying', 'Pause', 'Resume', 'Shuffle', 'ListIds', 'Summon', 'Volume', 'Pldump', 'Perms', 'Id']
+        toLoad = ['Help', 'Play', 'Search', 'Queue', 'Clean', 'Clear', 'Blacklist', 'Restart', 'Disconnect', 'Shutdown', 'Skip',
+		          'NowPlaying', 'Pause', 'Resume', 'Shuffle', 'ListIds', 'Summon', 'Volume', 'Pldump', 'Perms', 'Id']
 
         Command.commands = []
 

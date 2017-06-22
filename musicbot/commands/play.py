@@ -6,7 +6,13 @@ from musicbot import exceptions
 from musicbot.commands.command import Command
 
 class PlayCommand(Command):
-    """docstring for PlayCommand."""
+    """
+    Usage:
+        {command_prefix}play song_link
+        {command_prefix}play text to search for
+    Adds the song to the playlist.  If a link is not provided, the first
+    result from a youtube search is added to the queue.
+    """
 
     trigger = 'play'
     aliases = ['p']

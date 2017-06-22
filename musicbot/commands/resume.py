@@ -2,8 +2,12 @@ from musicbot.commands.command import Command
 from musicbot import exceptions
 
 class ResumeCommand(Command):
-    """docstring for ResumeCommand."""
-
+    """
+    Usage:
+        {command_prefix}resume
+    Resumes playback of a paused song.
+    """
+    
     trigger = 'resume'
     aliases = []
 

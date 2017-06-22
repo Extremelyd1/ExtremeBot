@@ -2,7 +2,11 @@ from datetime import timedelta
 from musicbot.commands.command import Command
 
 class NowPlayingCommand(Command):
-    """docstring for NowPlayingCommand."""
+    """
+    Usage:
+        {command_prefix}np
+    Displays the current song in chat.
+    """
 
     trigger = 'np'
     aliases = ['nowplaying']

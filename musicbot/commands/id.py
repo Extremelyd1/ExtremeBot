@@ -1,7 +1,11 @@
 from musicbot.commands.command import Command
 
 class IdCommand(Command):
-    """docstring for IdCommand."""
+    """
+    Usage:
+        {command_prefix}id [@user]
+    Tells the user their id or the id of another user.
+    """
 
     trigger = 'id'
     aliases = []

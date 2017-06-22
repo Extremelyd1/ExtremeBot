@@ -3,7 +3,11 @@ from random import shuffle
 from musicbot.commands.command import Command
 
 class ShuffleCommand(Command):
-    """docstring for ShuffleCommand."""
+    """
+    Usage:
+        {command_prefix}shuffle
+    Shuffles the playlist.
+    """
 
     trigger = 'shuffle'
     aliases = []

@@ -2,7 +2,11 @@ from musicbot import exceptions
 from musicbot.commands.command import Command
 
 class RestartCommand(Command):
-    """docstring for RestartCommand."""
+     """
+    Usage:
+        {command_prefix}restart
+    Restarts the bot.
+    """
 
     trigger = 'restart'
     aliases = ['reboot']

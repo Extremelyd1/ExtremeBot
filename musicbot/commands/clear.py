@@ -2,7 +2,11 @@ from musicbot.commands.command import Command
 from musicbot import exceptions
 
 class ClearCommand(Command):
-    """docstring for ClearCommand."""
+    """
+    Usage:
+        {command_prefix}clear
+    Clears the playlist.
+    """
 
     trigger = 'clear'
     aliases = []

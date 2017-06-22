@@ -4,7 +4,11 @@ from musicbot import exceptions
 from collections import defaultdict
 
 class PldumpCommand(Command):
-    """docstring for PldumpCommand."""
+    """
+    Usage:
+        {command_prefix}pldump url
+    Dumps the individual urls of a playlist
+    """
 
     trigger = 'pldump'
     aliases = ['playlistdump']

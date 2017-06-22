@@ -2,7 +2,11 @@ from musicbot.commands.command import Command
 from musicbot import exceptions
 
 class SkipCommand(Command):
-    """docstring for SkipCommand."""
+    """
+    Usage:
+        {command_prefix}skip
+    Skips the current song when enough votes are cast, or by the bot owner.
+    """
 
     trigger = 'skip'
     aliases = []

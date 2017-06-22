@@ -3,7 +3,11 @@ from musicbot.commands.command import Command
 from musicbot.constants import DISCORD_MSG_CHAR_LIMIT
 
 class QueueCommand(Command):
-    """docstring for QueueCommand."""
+    """
+    Usage:
+        {command_prefix}queue
+    Prints the current song queue.
+    """
 
     trigger = 'queue'
     aliases = ['q', 'queued']
