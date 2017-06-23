@@ -1,4 +1,6 @@
-# RhinoBot: The music bot for Discord.
+# ExtremeBot: The music bot for Discord.
+
+ExtremeBot is a fork of [RhinoBot](https://github.com/Just-Some-Bots/MusicBot).
 
 MusicBot is a Discord music bot written in [Python](https://www.python.org "Python homepage"). It plays requested songs and if the queue becomes empty it will play through a list of existing songs.
 
