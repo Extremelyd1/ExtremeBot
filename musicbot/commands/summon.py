@@ -48,8 +48,8 @@ class SummonCommand(Command):
 
         player = await self.bot.get_player(self.author.voice_channel, create=True)
 
-        if self.player.is_stopped:
-            self.player.play()
+        if player.is_stopped:
+            player.play()
 
         if self.bot.config.auto_playlist:
             await self.bot.on_player_finished_playing(player)

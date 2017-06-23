@@ -142,8 +142,14 @@ class MusicBot(discord.Client):
         owner = self._get_owner(voice=True)
         if owner:
             self.safe_print("Found owner in \"%s\", attempting to join..." % owner.voice_channel.name)
-            # TODO: Effort
-            await self.cmd_summon(owner.voice_channel, owner, None)
+
+            # Set command to summon, fill in needed properties and run command
+            commandClass = Command.get_command('summon')
+            command = commandClass()
+            command.bot = self
+            command.channel = owner.voice_channel
+            command.author = owner
+            await command.run()
             return owner.voice_channel
 
     async def _autojoin_channels(self, channels):
