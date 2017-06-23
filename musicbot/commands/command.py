@@ -13,8 +13,18 @@ class Command:
     commands = []
 
     def __init__(self):
+
+        # All commands to load, only used in super Command class
+        self.toload = ['SetAvatar', 'SetNick', 'SetName', 'JoinServer', 'Help', 'Play', 'Search', 'Queue', 'Clean',
+            'Clear', 'Blacklist', 'Restart', 'Disconnect', 'Shutdown', 'Skip', 'NowPlaying', 'Pause', 'Resume', 'Shuffle',
+            'ListIds', 'Summon', 'Volume', 'Pldump', 'Perms', 'Id']
+
+        # Properties for defining a command
         self.trigger = None
         self.aliases = []
+        self.owner_only = False
+
+        # Properties every command can access
         self.bot = None
         self.message = None
         self.channel = None
@@ -25,6 +35,8 @@ class Command:
         self.user_mentions = None
         self.channel_mentions = None
         self.voice_channel = None
+
+        # Leftover arguments
         self.leftover_args = None
 
     async def run(self):
@@ -55,13 +67,11 @@ class Command:
 
     @staticmethod
     def register_all_commands():
-        toLoad = ['Help', 'Play', 'Search', 'Queue', 'Clean', 'Clear', 'Blacklist', 'Restart', 'Disconnect', 'Shutdown', 'Skip',
-		          'NowPlaying', 'Pause', 'Resume', 'Shuffle', 'ListIds', 'Summon', 'Volume', 'Pldump', 'Perms', 'Id']
 
         Command.commands = []
 
         # Loop through all command names to load them
-        for commandName in toLoad:
+        for commandName in self.toLoad:
 
             # Get spec from file location
             spec = importlib.util.spec_from_file_location(commandName + 'Command', 'musicbot/commands/' + commandName.lower() + '.py')

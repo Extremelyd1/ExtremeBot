@@ -106,20 +106,6 @@ class MusicBot(discord.Client):
         self.aiosession = aiohttp.ClientSession(loop=self.loop)
         self.http.user_agent += ' MusicBot/%s' % BOTVERSION
 
-    # TODO: Add some sort of `denied` argument for a message to send when someone else tries to use it
-    def owner_only(func):
-        @wraps(func)
-        async def wrapper(self, *args, **kwargs):
-            # Only allow the owner to use these commands
-            orig_msg = _get_variable('message')
-
-            if not orig_msg or orig_msg.author.id == self.config.owner_id:
-                return await func(self, *args, **kwargs)
-            else:
-                raise exceptions.PermissionsError("only the owner can use this command", expire_in=30)
-
-        return wrapper
-
     @staticmethod
     def _fixg(x, dp=2):
         return ('{:.%sf}' % dp).format(x).rstrip('0').rstrip('.')
@@ -760,68 +746,6 @@ class MusicBot(discord.Client):
         print()
         # t-t-th-th-that's all folks!
 
-    async def cmd_help(self, command=None):
-        """
-        Usage:
-            {command_prefix}help [command]
-
-        Prints a help message.
-        If a command is specified, it prints a help message for that command.
-        Otherwise, it lists the available commands.
-        """
-
-        if command:
-            cmd = getattr(self, 'cmd_' + command, None)
-            if cmd:
-                return Response(
-                    "```\n{}```".format(
-                        dedent(cmd.__doc__),
-                        command_prefix=self.config.command_prefix
-                    ),
-                    delete_after=60
-                )
-            else:
-                return Response("No such command", delete_after=10)
-
-        else:
-            helpmsg = "**Commands**\n```"
-            commands = []
-
-            for att in dir(self):
-                if att.startswith('cmd_') and att != 'cmd_help':
-                    command_name = att.replace('cmd_', '').lower()
-                    commands.append("{}{}".format(self.config.command_prefix, command_name))
-
-            helpmsg += ", ".join(commands)
-            helpmsg += "```"
-            helpmsg += "https://github.com/SexualRhinoceros/MusicBot/wiki/Commands-list"
-
-            return Response(helpmsg, reply=True, delete_after=60)
-
-    @owner_only
-    async def cmd_joinserver(self, message, server_link=None):
-        """
-        Usage:
-            {command_prefix}joinserver invite_link
-
-        Asks the bot to join a server.  Note: Bot accounts cannot use invite links.
-        """
-
-        if self.user.bot:
-            url = await self.generate_invite_link()
-            return Response(
-                "Bot accounts can't use invite links!  Click here to invite me: \n{}".format(url),
-                reply=True, delete_after=30
-            )
-
-        try:
-            if server_link:
-                await self.accept_invite(server_link)
-                return Response(":+1:")
-
-        except:
-            raise exceptions.CommandError('Invalid URL provided:\n{}\n'.format(server_link), expire_in=30)
-
     async def _cmd_play_playlist_async(self, player, channel, author, permissions, playlist_url, extractor_type):
         """
         Secret handler to use the async wizardry to make playlist queuing non-"blocking"
@@ -916,201 +840,6 @@ class MusicBot(discord.Client):
         return Response("Enqueued {} songs to be played in {} seconds".format(
             songs_added, self._fixg(ttime, 1)), delete_after=30)
 
-    async def cmd_search(self, player, channel, author, permissions, leftover_args):
-        """
-        Usage:
-            {command_prefix}search [service] [number] query
-
-        Searches a service for a video and adds it to the queue.
-        - service: any one of the following services:
-            - youtube (yt) (default if unspecified)
-            - soundcloud (sc)
-            - yahoo (yh)
-        - number: return a number of video results and waits for user to choose one
-          - defaults to 1 if unspecified
-          - note: If your search query starts with a number,
-                  you must put your query in quotes
-            - ex: {command_prefix}search 2 "I ran seagulls"
-        """
-
-        if permissions.max_songs and player.playlist.count_for_user(author) > permissions.max_songs:
-            raise exceptions.PermissionsError(
-                "You have reached your playlist item limit (%s)" % permissions.max_songs,
-                expire_in=30
-            )
-
-        def argcheck():
-            if not leftover_args:
-                raise exceptions.CommandError(
-                    "Please specify a search query.\n%s" % dedent(
-                        self.cmd_search.__doc__.format(command_prefix=self.config.command_prefix)),
-                    expire_in=60
-                )
-
-        argcheck()
-
-        try:
-            leftover_args = shlex.split(' '.join(leftover_args))
-        except ValueError:
-            raise exceptions.CommandError("Please quote your search query properly.", expire_in=30)
-
-        service = 'youtube'
-        items_requested = 3
-        max_items = 10  # this can be whatever, but since ytdl uses about 1000, a small number might be better
-        services = {
-            'youtube': 'ytsearch',
-            'soundcloud': 'scsearch',
-            'yahoo': 'yvsearch',
-            'yt': 'ytsearch',
-            'sc': 'scsearch',
-            'yh': 'yvsearch'
-        }
-
-        if leftover_args[0] in services:
-            service = leftover_args.pop(0)
-            argcheck()
-
-        if leftover_args[0].isdigit():
-            items_requested = int(leftover_args.pop(0))
-            argcheck()
-
-            if items_requested > max_items:
-                raise exceptions.CommandError("You cannot search for more than %s videos" % max_items)
-
-        # Look jake, if you see this and go "what the fuck are you doing"
-        # and have a better idea on how to do this, i'd be delighted to know.
-        # I don't want to just do ' '.join(leftover_args).strip("\"'")
-        # Because that eats both quotes if they're there
-        # where I only want to eat the outermost ones
-        if leftover_args[0][0] in '\'"':
-            lchar = leftover_args[0][0]
-            leftover_args[0] = leftover_args[0].lstrip(lchar)
-            leftover_args[-1] = leftover_args[-1].rstrip(lchar)
-
-        search_query = '%s%s:%s' % (services[service], items_requested, ' '.join(leftover_args))
-
-        search_msg = await self.send_message(channel, "Searching for videos...")
-        await self.send_typing(channel)
-
-        try:
-            info = await self.downloader.extract_info(player.playlist.loop, search_query, download=False, process=True)
-
-        except Exception as e:
-            await self.safe_edit_message(search_msg, str(e), send_if_fail=True)
-            return
-        else:
-            await self.safe_delete_message(search_msg)
-
-        if not info:
-            return Response("No videos found.", delete_after=30)
-
-        def check(m):
-            return (
-                m.content.lower()[0] in 'yn' or
-                # hardcoded function name weeee
-                m.content.lower().startswith('{}{}'.format(self.config.command_prefix, 'search')) or
-                m.content.lower().startswith('exit'))
-
-        for e in info['entries']:
-            result_message = await self.safe_send_message(channel, "Result %s/%s: %s" % (
-                info['entries'].index(e) + 1, len(info['entries']), e['webpage_url']))
-
-            confirm_message = await self.safe_send_message(channel, "Is this ok? Type `y`, `n` or `exit`")
-            response_message = await self.wait_for_message(30, author=author, channel=channel, check=check)
-
-            if not response_message:
-                await self.safe_delete_message(result_message)
-                await self.safe_delete_message(confirm_message)
-                return Response("Ok nevermind.", delete_after=30)
-
-            # They started a new search query so lets clean up and bugger off
-            elif response_message.content.startswith(self.config.command_prefix) or \
-                    response_message.content.lower().startswith('exit'):
-
-                await self.safe_delete_message(result_message)
-                await self.safe_delete_message(confirm_message)
-                return
-
-            if response_message.content.lower().startswith('y'):
-                await self.safe_delete_message(result_message)
-                await self.safe_delete_message(confirm_message)
-                await self.safe_delete_message(response_message)
-
-                await self.cmd_play(player, channel, author, permissions, [], e['webpage_url'])
-
-                return Response("Alright, coming right up!", delete_after=30)
-            else:
-                await self.safe_delete_message(result_message)
-                await self.safe_delete_message(confirm_message)
-                await self.safe_delete_message(response_message)
-
-        return Response("Oh well :frowning:", delete_after=30)
-
-    @owner_only
-    async def cmd_setname(self, leftover_args, name):
-        """
-        Usage:
-            {command_prefix}setname name
-
-        Changes the bot's username.
-        Note: This operation is limited by discord to twice per hour.
-        """
-
-        name = ' '.join([name, *leftover_args])
-
-        try:
-            await self.edit_profile(username=name)
-        except Exception as e:
-            raise exceptions.CommandError(e, expire_in=20)
-
-        return Response(":ok_hand:", delete_after=20)
-
-    @owner_only
-    async def cmd_setnick(self, server, channel, leftover_args, nick):
-        """
-        Usage:
-            {command_prefix}setnick nick
-
-        Changes the bot's nickname.
-        """
-
-        if not channel.permissions_for(server.me).change_nickname:
-            raise exceptions.CommandError("Unable to change nickname: no permission.")
-
-        nick = ' '.join([nick, *leftover_args])
-
-        try:
-            await self.change_nickname(server.me, nick)
-        except Exception as e:
-            raise exceptions.CommandError(e, expire_in=20)
-
-        return Response(":ok_hand:", delete_after=20)
-
-    @owner_only
-    async def cmd_setavatar(self, message, url=None):
-        """
-        Usage:
-            {command_prefix}setavatar [url]
-
-        Changes the bot's avatar.
-        Attaching a file and leaving the url parameter blank also works.
-        """
-
-        if message.attachments:
-            thing = message.attachments[0]['url']
-        else:
-            thing = url.strip('<>')
-
-        try:
-            with aiohttp.Timeout(10):
-                async with self.aiosession.get(thing) as res:
-                    await self.edit_profile(avatar=await res.read())
-
-        except Exception as e:
-            raise exceptions.CommandError("Unable to change avatar: %s" % e, expire_in=20)
-
-        return Response(":ok_hand:", delete_after=20)
-
     async def on_message(self, message):
         await self.wait_until_ready()
 
@@ -1163,6 +892,11 @@ class MusicBot(discord.Client):
                 commandClass = Command.get_command(commandLabel)
                 # Instantiate the class
                 command = commandClass()
+
+                # Check if command is for owner only
+                if command.owner_only:
+                    if not message.author.id == self.config.owner_id:
+                        raise exceptions.PermissionsError("only the owner can use this command", expire_in=30)
 
                 # Set all variables in the class
                 command.bot = self
