@@ -12,10 +12,10 @@ class SetNameCommand(Command):
 
     trigger = 'setname'
     aliases = []
+    owner_only = True
 
     def __init__(self):
         super().__init__()
-        self.owner_only = True
 
     async def run(self):
 
@@ -24,8 +24,7 @@ class SetNameCommand(Command):
             raise exceptions.CommandError("Please provide a name", expire_in=20)
 
         # Build name
-        name = self.leftover_args.pop(0)
-        name = ' '.join([name, *self.leftover_args])
+        name = ' '.join([*self.leftover_args])
 
         # Change name, limited to twice an hour
         try:

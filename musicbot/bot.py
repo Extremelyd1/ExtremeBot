@@ -34,13 +34,7 @@ from .opus_loader import load_opus_lib
 from .constants import VERSION as BOTVERSION
 from .constants import DISCORD_MSG_CHAR_LIMIT, AUDIO_CACHE_PATH
 
-from .commands.command import Command
-from .commands.queue import QueueCommand
-from .commands.clean import CleanCommand
-from .commands.blacklist import BlacklistCommand
-from .commands.restart import RestartCommand
-from .commands.disconnect import DisconnectCommand
-from .commands.shutdown import ShutdownCommand
+from .commands.command_manager import register_command, register_all_commands, has_command, get_command
 
 load_opus_lib()
 
@@ -92,7 +86,7 @@ class MusicBot(discord.Client):
         self.cached_client_id = None
 
         # Register commands
-        Command.register_all_commands()
+        register_all_commands()
 
         if not self.autoplaylist:
             print("Warning: Autoplaylist is empty, disabling.")
@@ -144,7 +138,7 @@ class MusicBot(discord.Client):
             self.safe_print("Found owner in \"%s\", attempting to join..." % owner.voice_channel.name)
 
             # Set command to summon, fill in needed properties and run command
-            commandClass = Command.get_command('summon')
+            commandClass = get_command('summon')
             command = commandClass()
             command.bot = self
             command.channel = owner.voice_channel
@@ -893,16 +887,17 @@ class MusicBot(discord.Client):
                         "This command is disabled for your group (%s)." % user_permissions.name,
                         expire_in=20)
 
-            if Command.has_command(commandLabel):
+            if has_command(commandLabel):
                 # This returned the class
-                commandClass = Command.get_command(commandLabel)
+                commandClass = get_command(commandLabel)
+
                 # Instantiate the class
                 command = commandClass()
 
                 # Check if command is for owner only
                 if command.owner_only:
                     if not message.author.id == self.config.owner_id:
-                        raise exceptions.PermissionsError("only the owner can use this command", expire_in=30)
+                        raise exceptions.PermissionsError("Only the owner can use this command", expire_in=30)
 
                 # Set all variables in the class
                 command.bot = self

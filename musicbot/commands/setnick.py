@@ -11,10 +11,10 @@ class SetNickCommand(Command):
 
     trigger = 'setnick'
     aliases = ['setnickname']
+    owner_only = True
 
     def __init__(self):
         super().__init__()
-        self.owner_only = True
 
     async def run(self):
 
@@ -27,8 +27,7 @@ class SetNickCommand(Command):
             raise exceptions.CommandError("Please provide a nickname")
 
         # Build nickname
-        nick = self.leftover_args.pop(0)
-        nick = ' '.join([nick, *self.leftover_args])
+        nick = ' '.join([*self.leftover_args])
 
         # Change nickname
         try:

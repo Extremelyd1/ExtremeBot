@@ -11,17 +11,17 @@ class JoinServerCommand(Command):
 
     trigger = 'joinserver'
     aliases = []
+    owner_only = True
 
     def __init__(self):
         super().__init__()
-        self.owner_only = True
 
     async def run(self):
         if self.bot.user.bot or True:
             url = await self.bot.generate_invite_link()
             await self.bot.safe_send_message(
                 self.channel,
-                self.author.mention + "Bot accounts can't use invite links!  Click here to invite me: \n{}".format(url),
+                self.author.mention + ", Bot accounts can't use invite links!  Click here to invite me: \n{}".format(url),
                 expire_in=30
             )
 
