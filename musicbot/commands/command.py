@@ -12,12 +12,12 @@ class Command:
 
     commands = []
 
-    def __init__(self):
+    # All commands to load, only used in super Command class
+    toload = ['SetAvatar', 'SetNick', 'SetName', 'JoinServer', 'Help', 'Play', 'Search', 'Queue', 'Clean',
+        'Clear', 'Blacklist', 'Restart', 'Disconnect', 'Shutdown', 'Skip', 'NowPlaying', 'Pause', 'Resume', 'Shuffle',
+        'ListIds', 'Summon', 'Volume', 'Pldump', 'Perms', 'Id']
 
-        # All commands to load, only used in super Command class
-        self.toload = ['SetAvatar', 'SetNick', 'SetName', 'JoinServer', 'Help', 'Play', 'Search', 'Queue', 'Clean',
-            'Clear', 'Blacklist', 'Restart', 'Disconnect', 'Shutdown', 'Skip', 'NowPlaying', 'Pause', 'Resume', 'Shuffle',
-            'ListIds', 'Summon', 'Volume', 'Pldump', 'Perms', 'Id']
+    def __init__(self):
 
         # Properties for defining a command
         self.trigger = None
@@ -71,7 +71,7 @@ class Command:
         Command.commands = []
 
         # Loop through all command names to load them
-        for commandName in self.toLoad:
+        for commandName in Command.toload:
 
             # Get spec from file location
             spec = importlib.util.spec_from_file_location(commandName + 'Command', 'musicbot/commands/' + commandName.lower() + '.py')
