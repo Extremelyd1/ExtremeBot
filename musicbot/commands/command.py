@@ -29,3 +29,7 @@ class Command:
         to call the command.
         """
         print("Something went wrong, the super Command.run() method was executed")
+
+    @classmethod
+    def get_class_name(cls):
+        return cls.__name__

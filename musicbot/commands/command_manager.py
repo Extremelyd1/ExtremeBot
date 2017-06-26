@@ -5,7 +5,7 @@ from .command import Command
 commands = []
 
 # All commands to load, only used in super Command class
-toload = ['SetAvatar', 'SetNick', 'SetName', 'JoinServer', 'Help', 'Play', 'Search', 'Queue', 'Clean',
+toload = ['Link', 'SetAvatar', 'SetNick', 'SetName', 'JoinServer', 'Help', 'Play', 'Search', 'Queue', 'Clean',
     'Clear', 'Blacklist', 'Restart', 'Disconnect', 'Shutdown', 'Skip', 'NowPlaying', 'Pause', 'Resume', 'Shuffle',
     'ListIds', 'Summon', 'Volume', 'Pldump', 'Perms', 'Id']
 
@@ -19,9 +19,9 @@ def register_command(command):
 
     for _command in commands:
         if _command.trigger == command.trigger:
-            print("ERROR: Command %s and %s have the same trigger. Disregarding the first." % command.__class__.__name__, _command.__class__.__name__)
+            print("ERROR: Command %s and %s have the same trigger. Disregarding the first." % (command.get_class_name(), _command.get_class_name()))
         elif set(_command.aliases) & set(command.aliases):
-            print("ERROR: Command %s and %s have (partially) the same aliases. Disregarding the first" % command.__class__.__name__, _command.__class__.__name__)
+            print("ERROR: Command %s and %s have (partially) the same aliases. Disregarding the first" % (command.get_class_name(), _command.get_class_name()))
 
     # Register command
     #print("Registered command %s" % command.__class__.__name__)
