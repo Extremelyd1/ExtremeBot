@@ -6,6 +6,7 @@ import traceback
 from .exceptions import ExtractionError
 from .utils import get_header, md5sum
 
+from musicbot.colorama import Fore, Style
 
 class BasePlaylistEntry:
     def __init__(self):
@@ -182,10 +183,10 @@ class URLPlaylistEntry(BasePlaylistEntry):
 
                 if expected_fname_base in ldir:
                     self.filename = os.path.join(self.download_folder, expected_fname_base)
-                    print("[Download] Cached:", self.url)
+                    print(Fore.YELLOW + "[Download]" + Style.RESET_ALL + " Cached:", self.url)
 
                 elif expected_fname_noex in flistdir:
-                    print("[Download] Cached (different extension):", self.url)
+                    print(Fore.YELLOW + "[Download]" + Style.RESET_ALL + " Cached (different extension):", self.url)
                     self.filename = os.path.join(self.download_folder, ldir[flistdir.index(expected_fname_noex)])
                     print("Expected %s, got %s" % (
                         self.expected_filename.rsplit('.', 1)[-1],
@@ -207,14 +208,14 @@ class URLPlaylistEntry(BasePlaylistEntry):
 
     # noinspection PyShadowingBuiltins
     async def _really_download(self, *, hash=False):
-        print("[Download] Started:", self.url)
+        print(Fore.YELLOW + "[Download]" + Style.RESET_ALL + " Started:", self.url)
 
         try:
             result = await self.playlist.downloader.extract_info(self.playlist.loop, self.url, download=True)
         except Exception as e:
             raise ExtractionError(e)
 
-        print("[Download] Complete:", self.url)
+        print(Fore.YELLOW + "[Download]" + Style.RESET_ALL + " Complete:", self.url)
 
         if result is None:
             raise ExtractionError("ytdl broke and hell if I know why")
@@ -232,6 +233,3 @@ class URLPlaylistEntry(BasePlaylistEntry):
             else:
                 # Move the temporary file to it's final location.
                 os.rename(unhashed_fname, self.filename)
-
-
-

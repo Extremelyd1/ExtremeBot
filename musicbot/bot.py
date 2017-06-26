@@ -34,10 +34,10 @@ from .opus_loader import load_opus_lib
 from .constants import VERSION as BOTVERSION
 from .constants import DISCORD_MSG_CHAR_LIMIT, AUDIO_CACHE_PATH
 
+from musicbot.colorama import Fore, Back, Style
 from .commands.command_manager import register_command, register_all_commands, has_command, get_command
 
 load_opus_lib()
-
 
 class SkipState:
     def __init__(self):
@@ -67,6 +67,8 @@ class Response:
 
 class MusicBot(discord.Client):
     def __init__(self, config_file=ConfigDefaults.options_file, perms_file=PermissionsDefaults.perms_file):
+
+        print(Fore.GREEN + Style.BRIGHT + "Starting up bot..." + Style.RESET_ALL)
 
         self.players = {}
         self.the_voice_clients = {}

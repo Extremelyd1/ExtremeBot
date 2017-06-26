@@ -1,12 +1,13 @@
 import importlib.util
 
 from .command import Command
+from musicbot.colorama import Fore, Back, Style
 
 commands = []
 
 # All commands to load, only used in super Command class
 toload = ['Link', 'SetAvatar', 'SetNick', 'SetName', 'JoinServer', 'Help', 'Play', 'Search', 'Queue', 'Clean',
-    'Clear', 'Blacklist', 'Restart', 'Disconnect', 'Shutdown', 'Skip', 'NowPlaying', 'Pause', 'Resume', 'Shuffle',
+'Clear', 'Blacklist', 'Restart', 'Disconnect', 'Shutdown', 'Skip', 'NowPlaying', 'Pause', 'Resume', 'Shuffle',
     'ListIds', 'Summon', 'Volume', 'Pldump', 'Perms', 'Id']
 
 def register_command(command):
@@ -15,17 +16,25 @@ def register_command(command):
 
     Keyword arguments:
     command -- The command class to register
+    returns -- True or False, depening if command is registered without errors
     """
 
     for _command in commands:
         if _command.trigger == command.trigger:
-            print("ERROR: Command %s and %s have the same trigger. Disregarding the first." % (command.get_class_name(), _command.get_class_name()))
+            print(Fore.RED + Style.BRIGHT + ("ERROR: Command %s and %s have the same trigger." % ((command.get_class_name(), _command.get_class_name()))) + Style.RESET_ALL)
+            return False
+        elif command.trigger in _command.aliases:
+            print(Fore.RED + Style.BRIGHT + ("ERROR: Trigger for command %s is an alias for command %s." % ((command.get_class_name(), _command.get_class_name()))) + Style.RESET_ALL)
+            return False
+        elif _command.trigger in command.aliases:
+            print(Fore.RED + Style.BRIGHT + ("ERROR: An alias of command %s is already used as trigger for command %s." % ((command.get_class_name(), _command.get_class_name()))) + Style.RESET_ALL)
+            return False
         elif set(_command.aliases) & set(command.aliases):
-            print("ERROR: Command %s and %s have (partially) the same aliases. Disregarding the first" % (command.get_class_name(), _command.get_class_name()))
-
+            print(Fore.RED + Style.BRIGHT + ("ERROR: Command %s and %s have (partially) the same aliases." % ((command.get_class_name(), _command.get_class_name()))) + Style.RESET_ALL)
+            return False
     # Register command
-    #print("Registered command %s" % command.__class__.__name__)
     commands.append(command)
+    return True
 
 def register_all_commands():
 
@@ -60,7 +69,8 @@ def register_all_commands():
                 pass
 
         # This is the class within the module, that we can now register
-        register_command(commandClass)
+        if not register_command(commandClass):
+            print(Fore.RED + Style.BRIGHT + ("ERROR: Ignored command %s" %commandClass.get_class_name()) + Style.RESET_ALL)
 
 def has_command(command_string):
     """

@@ -1,6 +1,8 @@
 import shutil
 import textwrap
 
+from musicbot.colorama import Fore, Back, Style
+
 # Base class for exceptions
 class MusicbotException(Exception):
     def __init__(self, message, *, expire_in=0):
