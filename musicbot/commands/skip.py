@@ -1,4 +1,5 @@
 from musicbot.commands.command import Command
+from musicbot.utils import sane_round_int
 from musicbot import exceptions
 
 class SkipCommand(Command):
@@ -54,7 +55,7 @@ class SkipCommand(Command):
 
         num_skips = self.player.skip_state.add_skipper(self.author.id, self.message)
 
-        skips_remaining = min(self.config.skips_required,
+        skips_remaining = min(self.bot.config.skips_required,
                               sane_round_int(num_voice * self.bot.config.skip_ratio_required)) - num_skips
 
         if skips_remaining <= 0:

@@ -38,7 +38,7 @@ def register_command(command):
 
 def register_all_commands():
 
-    commands = []
+    del commands[:]
 
     # Loop through all command names to load them
     for commandName in toload:
