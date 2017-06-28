@@ -47,7 +47,7 @@ class CleanCommand(Command):
         if self.bot.user.bot:
             if self.channel.permissions_for(self.server.me).manage_messages:
                 deleted = await self.bot.purge_from(self.channel, check=check, limit=search_range, before=self.message)
-                await self.bot.safe_send_message(
+                await self.bot.safe_send_message_check(
                     self.channel,
                     'Cleaned up {} message{}.'.format(len(deleted), 's' * bool(deleted)),
                     expire_in=15,
@@ -77,7 +77,7 @@ class CleanCommand(Command):
                     except discord.HTTPException:
                         pass
 
-        await self.bot.safe_send_message(
+        await self.bot.safe_send_message_check(
             self.channel,
             'Cleaned up {} message{}.'.format(deleted, 's' * bool(deleted)),
             expire_in=15,

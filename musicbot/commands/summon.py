@@ -28,7 +28,7 @@ class SummonCommand(Command):
 
         if not chperms.connect:
             self.bot.safe_print("Cannot join channel \"%s\", no permission." % self.author.voice_channel.name)
-            await self.bot.safe_send_message(
+            await self.bot.safe_send_message_check(
                 self.channel,
                 '```Cannot join channel \"%s\", no permission.```' % self.author.voice_channel.name,
                 expire_in=25,
@@ -38,7 +38,7 @@ class SummonCommand(Command):
 
         elif not chperms.speak:
             self.bot.safe_print("Will not join channel \"%s\", no permission to speak." % self.author.voice_channel.name)
-            await self.bot.safe_send_message(
+            await self.bot.safe_send_message_check(
                 self.channel,
                 '```Cannot join channel \"%s\", no permission to speak.```' % self.author.voice_channel.name,
                 expire_in=25,
@@ -46,7 +46,7 @@ class SummonCommand(Command):
             )
             return
 
-        player = await self.bot.get_player(self.author.voice_channel, create=True)
+        player = await self.bot.get_player(self.author.voice_channel)
 
         if player.is_stopped:
             player.play()

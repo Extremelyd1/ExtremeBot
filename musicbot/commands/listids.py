@@ -22,7 +22,7 @@ class ListIdsCommand(Command):
         cats = ['channels', 'roles', 'users']
 
         if not len(self.leftover_args) in [0, 1]:
-            await self.bot.safe_send_message(
+            await self.bot.safe_send_message_check(
                 self.channel,
                 ('%s, Valid categories: ' % self.author.mention) + ' '.join(['`%s`' % c for c in cats]),
                 expire_in=25,
@@ -36,7 +36,7 @@ class ListIdsCommand(Command):
             cat = self.leftover_args.pop(0)
 
         if cat not in cats and cat != 'all':
-            await self.bot.safe_send_message(
+            await self.bot.safe_send_message_check(
                 self.channel,
                 ('%s, Valid categories: ' % self.author.mention) + ' '.join(['`%s`' % c for c in cats]),
                 expire_in=25,
@@ -81,7 +81,7 @@ class ListIdsCommand(Command):
             # TODO: Fix naming (Discord20API-ids.txt)
             await send_file(self.author, sdata, filename='%s-ids-%s.txt' % (self.server.name.replace(' ', '_'), cat))
 
-        await self.bot.safe_send_message(
+        await self.bot.safe_send_message_check(
             self.channel,
             ':mailbox_with_mail:',
             expire_in=20,

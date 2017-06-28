@@ -485,6 +485,10 @@ class MusicBot(discord.Client):
 
         await self.change_status(game)
 
+    async def safe_send_message_check(self, dest, content, *, tts=False, expire_in=0, also_delete=None, quiet=False):
+        expire_in = expire_in if self.config.delete_messages else 0
+        also_delete = also_delete if self.config.delete_invoking else None
+        return await self.safe_send_message(dest, content, tts=tts, expire_in=expire_in, also_delete=also_delete, quiet=quiet)
 
     async def safe_send_message(self, dest, content, *, tts=False, expire_in=0, also_delete=None, quiet=False):
         msg = None
@@ -847,6 +851,8 @@ class MusicBot(discord.Client):
 
         message_content = message.content.strip()
         if not message_content.startswith(self.config.command_prefix):
+            if self.config.main_channel and message.channel.id == self.config.main_channel and not message.author == self.user:
+                await self.safe_delete_message(message, quiet=True)
             return
 
         if message.author == self.user:
@@ -907,7 +913,7 @@ class MusicBot(discord.Client):
                 command.channel = message.channel
                 command.author = message.author
                 command.server = message.server
-                command.player = await self.get_player(message.channel)
+                command.player = await self.get_player(message.author.voice_channel, create=True if commandLabel == 'summon' else False) # This looks dumb
                 command.permissions = self.permissions.for_user(message.author)
                 command.user_mentions = list(map(message.server.get_member, message.raw_mentions))
                 command.channel_mentions = list(map(message.server.get_channel, message.raw_channel_mentions))
@@ -916,6 +922,9 @@ class MusicBot(discord.Client):
 
                 # Run the command
                 await command.run()
+
+            else:
+                raise exceptions.CommandError('Unknown command, type %shelp for more info' % self.config.command_prefix, expire_in=10)
 
         except (exceptions.CommandError, exceptions.HelpfulError, exceptions.ExtractionError) as e:
             print("{0.__class__}: {0.message}".format(e))

@@ -26,7 +26,7 @@ class HelpCommand(Command):
         if command:
             cmd = Command.get_command(command)
             if cmd:
-                await self.bot.safe_send_message(
+                await self.bot.safe_send_message_check(
                     self.channel,
                     "```\n{}```".format(
                         dedent(cmd.__doc__).format(
@@ -36,7 +36,7 @@ class HelpCommand(Command):
                     also_delete=self.message
                 )
             else:
-                await self.bot.safe_send_message(
+                await self.bot.safe_send_message_check(
                     self.channel,
                     'No such command',
                     expire_in=10,
@@ -53,7 +53,7 @@ class HelpCommand(Command):
             helpmsg += ", ".join(commands)
             helpmsg += "```"
 
-            await self.bot.safe_send_message(
+            await self.bot.safe_send_message_check(
                 self.channel,
                 '%s, ' % self.author.mention + helpmsg,
                 expire_in=60,

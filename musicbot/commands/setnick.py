@@ -35,4 +35,4 @@ class SetNickCommand(Command):
         except Exception as e:
             raise exceptions.CommandError(e, expire_in=20)
 
-        await self.bot.safe_send_message(self.channel, ":ok_hand:", expire_in=20)
+        await self.bot.safe_send_message_check(self.channel, ":ok_hand:", expire_in=20, also_delete=self.message)

@@ -44,17 +44,19 @@ class BlacklistCommand(Command):
 
             write_file(self.bot.config.blacklist_file, self.bot.blacklist)
 
-            await self.bot.safe_send_message(
+            await self.bot.safe_send_message_check(
                 self.channel,
-                '%s, %s users have been added to the blacklist' % (self.author.mention, len(self.bot.blacklist) - old_len), expire_in=10,
+                '%s, %s users have been added to the blacklist' % (self.author.mention, len(self.bot.blacklist) - old_len),
+                expire_in=10,
                 also_delete=self.message
             )
 
         else:
             if self.bot.blacklist.isdisjoint(user.id for user in self.user_mentions):
-                await self.bot.safe_send_message(
+                await self.bot.safe_send_message_check(
                     self.channel,
-                    '%s none of those users are in the blacklist.' % (self.author.mention), expire_in=10,
+                    '%s none of those users are in the blacklist.' % (self.author.mention),
+                    expire_in=10,
                     also_delete=self.message
                 )
 
@@ -62,8 +64,9 @@ class BlacklistCommand(Command):
                 self.bot.blacklist.difference_update(user.id for user in self.user_mentions)
                 write_file(self.bot.config.blacklist_file, self.bot.blacklist)
 
-                await self.bot.safe_send_message(
+                await self.bot.safe_send_message_check(
                     self.channel,
-                    '%s, %s users have been removed from the blacklist' % (self.author.mention, old_len - len(self.bot.blacklist)), expire_in=10,
+                    '%s, %s users have been removed from the blacklist' % (self.author.mention, old_len - len(self.bot.blacklist)),
+                    expire_in=10,
                     also_delete=self.message
                 )

@@ -19,7 +19,7 @@ class JoinServerCommand(Command):
     async def run(self):
         if self.bot.user.bot or True:
             url = await self.bot.generate_invite_link()
-            await self.bot.safe_send_message(
+            await self.bot.safe_send_message_check(
                 self.channel,
                 self.author.mention + ", Bot accounts can't use invite links!  Click here to invite me: \n{}".format(url),
                 expire_in=30
@@ -32,7 +32,7 @@ class JoinServerCommand(Command):
                 server_link = leftover_args[0]
                 if server_link:
                     await self.bot.accept_invite(server_link)
-                    await self.bot.safe_send_message(self.channel, ":+1:", expire_in=30)
+                    await self.bot.safe_send_message_check(self.channel, ":+1:", expire_in=30)
 
         except:
             raise exceptions.CommandError('Invalid URL provided:\n{}\n'.format(server_link), expire_in=30)

@@ -3,6 +3,7 @@ import shlex
 from textwrap import dedent
 from musicbot import exceptions
 from musicbot.commands.command import Command
+from musicbot.commands.command_manager import get_command
 
 class SearchCommand(Command):
     """
@@ -147,7 +148,13 @@ class SearchCommand(Command):
                 await self.bot.safe_delete_message(confirm_message)
                 await self.bot.safe_delete_message(response_message)
 
-                playCommand = Command.get_command('play')
+                # This returned the class
+                playCommandClass = get_command('play')
+
+                # Instantiate the class
+                playCommand = playCommandClass()
+
+                playCommand.bot = self.bot
                 playCommand.player = self.player
                 playCommand.channel = self.channel
                 playCommand.author = self.author

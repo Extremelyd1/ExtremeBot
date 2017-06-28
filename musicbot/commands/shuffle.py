@@ -28,7 +28,7 @@ class ShuffleCommand(Command):
             await asyncio.sleep(0.6)
 
         await self.bot.safe_delete_message(hand, quiet=True)
-        await self.bot.safe_send_message(
+        await self.bot.safe_send_message_check(
             self.channel,
             ':ok_hand:',
             expire_in=15,

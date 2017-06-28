@@ -33,7 +33,7 @@ class NowPlayingCommand(Command):
             self.bot.server_specific_data[self.server]['last_np_msg'] = await self.bot.safe_send_message(self.channel, np_text)
             await self.bot._manual_delete_check(self.message)
         else:
-            await self.bot.safe_send_message(
+            await self.bot.safe_send_message_check(
                 self.channel,
                 'There are no songs queued! Queue something with {}play.'.format(self.bot.config.command_prefix),
                 expire_in=30,

@@ -23,9 +23,10 @@ class SkipCommand(Command):
             if self.player.playlist.peek():
                 if self.player.playlist.peek()._is_downloading:
                     # print(player.playlist.peek()._waiting_futures[0].__dict__)
-                    await self.bot.safe_send_message(
+                    await self.bot.safe_send_message_check(
                         self.channel,
-                        'The next song (%s) is downloading, please wait.' % self.player.playlist.peek().title, expire_in=20,
+                        'The next song (%s) is downloading, please wait.' % self.player.playlist.peek().title,
+                        expire_in=20,
                         also_delete=self.message
                     )
                     return
@@ -60,7 +61,7 @@ class SkipCommand(Command):
 
         if skips_remaining <= 0:
             self.player.skip()  # check autopause stuff here
-            await self.bot.safe_send_message(
+            await self.bot.safe_send_message_check(
                 self.channel,
                 '{}, your skip for **{}** was acknowledged.'
                 '\nThe vote to skip has been passed.{}'.format(
@@ -74,7 +75,7 @@ class SkipCommand(Command):
 
         else:
             # TODO: When a song gets skipped, delete the old x needed to skip messages
-            await self.bot.safe_send_message(
+            await self.bot.safe_send_message_check(
                 self.channel,
                 '{}, your skip for **{}** was acknowledged.'
                 '\n**{}** more {} required to vote to skip this song.'.format(

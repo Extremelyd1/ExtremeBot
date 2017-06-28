@@ -16,8 +16,9 @@ class ClearCommand(Command):
 
     async def run(self):
         self.player.playlist.clear()
-        await self.bot.safe_send_message(
+        await self.bot.safe_send_message_check(
             self.channel,
-            ':put_litter_in_its_place:', expire_in=20,
+            ':put_litter_in_its_place:',
+            expire_in=20,
             also_delete=self.message
         )

@@ -18,7 +18,7 @@ class VolumeCommand(Command):
     async def run(self):
 
         if len(self.leftover_args) == 0:
-            await self.bot.safe_send_message(
+            await self.bot.safe_send_message_check(
                 self.channel,
                 '%s, Current volume: `%s%%`' % (self.author.mention, int(self.player.volume * 100)),
                 expire_in=20,
@@ -51,7 +51,7 @@ class VolumeCommand(Command):
         if 0 < new_volume <= 100:
             self.player.volume = new_volume / 100.0
 
-            await self.bot.safe_send_message(
+            await self.bot.safe_send_message_check(
                 self.channel,
                 '%s, updated volume from %d to %d' % (self.author.mention, old_volume, new_volume),
                 expire_in=20,

@@ -26,7 +26,7 @@ class PlayCommand(Command):
 
         if len(self.leftover_args) == 0:
             # show help message
-            await self.bot.safe_send_message(
+            await self.bot.safe_send_message_check(
                 self.channel,
                 '%s, no query specified' % self.author.mention,
                 expire_in=20,
@@ -215,7 +215,7 @@ class PlayCommand(Command):
 
             reply_text %= (btext, position, time_until)
 
-        await self.bot.safe_send_message(
+        await self.bot.safe_send_message_check(
             self.channel,
             reply_text,
             expire_in=30,

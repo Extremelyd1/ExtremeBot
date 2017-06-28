@@ -19,7 +19,7 @@ class PldumpCommand(Command):
     async def run(self):
 
         if not len(self.leftover_args) == 1:
-            await self.bot.safe_send_message(
+            await self.bot.safe_send_message_check(
                 self.channel,
                 '%s, no playlist specified' % self.author.mention,
                 expire_in=20,
@@ -64,7 +64,7 @@ class PldumpCommand(Command):
             fcontent.seek(0)
             await self.bot.send_file(self.author, fcontent, filename='playlist.txt', content="Here's the url dump for <%s>" % song_url)
 
-        await self.bot.safe_send_message(
+        await self.bot.safe_send_message_check(
             self.channel,
             ':mailbox_with_mail:',
             expire_in=20,

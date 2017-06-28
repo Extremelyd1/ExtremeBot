@@ -23,7 +23,7 @@ class PermsCommand(Command):
             lines.insert(len(lines) - 1, "%s: %s" % (perm, self.bot.permissions.__dict__[perm]))
 
         await self.bot.send_message(self.author, '\n'.join(lines))
-        await self.bot.safe_send_message(
+        await self.bot.safe_send_message_check(
             self.channel,
             ':mailbox_with_mail:'
             , expire_in=20,

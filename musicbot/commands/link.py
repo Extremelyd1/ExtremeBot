@@ -15,14 +15,14 @@ class LinkCommand(Command):
 
     async def run(self):
         if self.player.current_entry:
-            await self.bot.safe_send_message(
+            await self.bot.safe_send_message_check(
                 self.channel,
                 self.player.current_entry.url,
                 expire_in=20,
                 also_delete=self.message
             )
         else:
-            await self.bot.safe_send_message(
+            await self.bot.safe_send_message_check(
                 self.channel,
                 "Hold up, fetching song",
                 expire_in=20,
