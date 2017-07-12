@@ -515,6 +515,9 @@ class MusicBot(discord.Client):
         return msg
 
     async def safe_delete_message(self, message, *, quiet=False):
+        if not message and quiet:
+            return
+
         try:
             return await self.delete_message(message)
 
@@ -735,6 +738,23 @@ class MusicBot(discord.Client):
                 print("Deleting old audio cache")
             else:
                 print("Could not delete old audio cache, moving on.")
+
+        # Temporary fix for cleaning the channel before starting
+        if self.config.main_channel:
+            channel = self.get_channel(self.config.main_channel)
+            # This returned the class
+            commandClass = get_command('clean')
+            # Instantiate the class
+            command = commandClass()
+            # Set all variables in the class
+            command.bot = self
+            command.message = None
+            command.channel = channel
+            command.author = channel.server.get_member(self.config.owner_id)
+            command.server = channel.server
+            command.leftover_args = [1000, True]
+            # Run the command
+            await command.run()
 
         if self.config.autojoin_channels:
             await self._autojoin_channels(autojoin_channels)

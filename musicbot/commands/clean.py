@@ -18,10 +18,12 @@ class CleanCommand(Command):
         super().__init__()
 
     async def run(self):
-        if not len(self.leftover_args) in [0, 1]:
+        if not len(self.leftover_args) in [0, 1, 2]:
             raise exceptions.CommandError('Enter a number. NUMBER. That means digits. `15`. Etc.', expire_in=10)
 
-        search_range = 50 if not len(self.leftover_args) == 1 else self.leftover_args[0]
+        search_range = 50 if not len(self.leftover_args) in [1, 2] else self.leftover_args[0]
+
+        quiet = False if not len(self.leftover_args) == 2 else self.leftover_args[1]
 
         try:
             float(search_range)  # lazy check
@@ -47,12 +49,13 @@ class CleanCommand(Command):
         if self.bot.user.bot:
             if self.channel.permissions_for(self.server.me).manage_messages:
                 deleted = await self.bot.purge_from(self.channel, check=check, limit=search_range, before=self.message)
-                await self.bot.safe_send_message_check(
-                    self.channel,
-                    'Cleaned up {} message{}.'.format(len(deleted), 's' * bool(deleted)),
-                    expire_in=15,
-                    also_delete=self.message
-                )
+                if not quiet:
+                    await self.bot.safe_send_message_check(
+                        self.channel,
+                        'Cleaned up {} message{}.'.format(len(deleted), 's' * bool(deleted)),
+                        expire_in=15,
+                        also_delete=self.message
+                    )
                 return
 
         deleted = 0
@@ -77,9 +80,10 @@ class CleanCommand(Command):
                     except discord.HTTPException:
                         pass
 
-        await self.bot.safe_send_message_check(
-            self.channel,
-            'Cleaned up {} message{}.'.format(deleted, 's' * bool(deleted)),
-            expire_in=15,
-            also_delete=self.message
-        )
+        if not quiet:
+            await self.bot.safe_send_message_check(
+                self.channel,
+                'Cleaned up {} message{}.'.format(deleted, 's' * bool(deleted)),
+                expire_in=15,
+                also_delete=self.message
+            )
