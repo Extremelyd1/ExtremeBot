@@ -46,7 +46,7 @@ class SummonCommand(Command):
             )
             return
 
-        player = await self.bot.get_player(self.author.voice_channel)
+        player = await self.bot.get_player(self.author.voice_channel, create=True)
 
         if player.is_stopped:
             player.play()

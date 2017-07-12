@@ -79,7 +79,7 @@ class ListIdsCommand(Command):
             sdata.seek(0)
 
             # TODO: Fix naming (Discord20API-ids.txt)
-            await send_file(self.author, sdata, filename='%s-ids-%s.txt' % (self.server.name.replace(' ', '_'), cat))
+            await self.bot.send_file(self.author, sdata, filename='%s-ids-%s.txt' % (self.server.name.replace(' ', '_'), cat))
 
         await self.bot.safe_send_message_check(
             self.channel,

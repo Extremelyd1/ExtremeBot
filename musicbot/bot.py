@@ -350,6 +350,9 @@ class MusicBot(discord.Client):
             self.the_voice_clients[server.id].channel = channel
 
     async def get_player(self, channel, create=False) -> MusicPlayer:
+        if not channel:
+            return
+
         server = channel.server
 
         if server.id not in self.players:
@@ -913,7 +916,8 @@ class MusicBot(discord.Client):
                 command.channel = message.channel
                 command.author = message.author
                 command.server = message.server
-                command.player = await self.get_player(message.author.voice_channel, create=True if commandLabel == 'summon' else False) # This looks dumb
+                if commandLabel != 'summon':
+                    command.player = await self.get_player(message.channel)
                 command.permissions = self.permissions.for_user(message.author)
                 command.user_mentions = list(map(message.server.get_member, message.raw_mentions))
                 command.channel_mentions = list(map(message.server.get_channel, message.raw_channel_mentions))
