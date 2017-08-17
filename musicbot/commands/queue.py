@@ -53,10 +53,10 @@ class QueueCommand(Command):
             lines.append(
                 'There are no songs queued! Queue something with {}play.'.format(self.bot.config.command_prefix))
 
-        message = '\n'.join(lines)
+        messageToSend = '\n'.join(lines)
         await self.bot.safe_send_message_check(
             self.message.channel,
-            message,
+            messageToSend,
             expire_in=30,
-            also_delete=message
+            also_delete=self.message
         )
