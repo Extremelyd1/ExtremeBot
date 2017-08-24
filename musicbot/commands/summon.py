@@ -21,6 +21,12 @@ class SummonCommand(Command):
         voice_client = self.bot.the_voice_clients.get(self.channel.server.id, None)
         if voice_client and voice_client.channel.server == self.author.voice_channel.server:
             await self.bot.move_voice_client(self.author.voice_channel)
+            await self.bot.safe_send_message_check(
+                self.channel,
+                ':ok_hand:',
+                expire_in=10,
+                also_delete=self.message
+            )
             return
 
         # move to _verify_vc_perms?
@@ -53,5 +59,12 @@ class SummonCommand(Command):
 
         if self.bot.config.auto_playlist:
             await self.bot.on_player_finished_playing(player)
+
+        await self.bot.safe_send_message_check(
+            self.channel,
+            ':ok_hand:',
+            expire_in=10,
+            also_delete=self.message
+        )
 
         return
