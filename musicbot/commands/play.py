@@ -57,6 +57,7 @@ class PlayCommand(Command):
         # abstract the search handling away from the user
         # our ytdl options allow us to use search strings as input urls
         if info.get('url', '').startswith('ytsearch'):
+
             # print("[Command:play] Searching for \"%s\"" % song_url)
             info = await self.bot.downloader.extract_info(
                 self.player.playlist.loop,
@@ -110,72 +111,108 @@ class PlayCommand(Command):
 
             if info['extractor'].lower() in ['youtube:playlist', 'soundcloud:set', 'bandcamp:album']:
                 try:
-                    return await self.bot._cmd_play_playlist_async(self.player, self.channel, self.author, self.permissions, song_url, info['extractor'])
+
+                    await self.bot.send_typing(self.channel)
+                    info = await self.bot.downloader.extract_info(self.player.playlist.loop, song_url, download=False, process=False)
+
+                    if not info:
+                        raise exceptions.CommandError("That playlist cannot be played.")
+
+                    num_songs = sum(1 for _ in info['entries'])
+                    t0 = time.time()
+
+                    busymsg = await self.bot.safe_send_message(
+                        self.channel, "Processing `%s` songs..." % num_songs)  # TODO: From playlist_title
+                    await self.bot.send_typing(self.channel)
+
+                    entries_added = 0
+                    if info['extractor'] == 'youtube:playlist':
+                        try:
+                            entries_added = await self.player.playlist.async_process_youtube_playlist(
+                                song_url, channel=self.channel, author=self.author)
+                            # TODO: Add hook to be called after each song
+                            # TODO: Add permissions
+
+                        except Exception:
+                            traceback.print_exc()
+                            raise exceptions.CommandError('Error handling playlist %s queuing.' % song_url, expire_in=30)
+
+                    elif info['extractor'].lower() in ['soundcloud:set', 'bandcamp:album']:
+                        try:
+                            entries_added = await self.player.playlist.async_process_sc_bc_playlist(
+                                song_url, channel=self.channel, author=self.author)
+                            # TODO: Add hook to be called after each song
+                            # TODO: Add permissions
+
+                        except Exception:
+                            traceback.print_exc()
+                            raise exceptions.CommandError('Error handling playlist %s queuing.' % song_url, expire_in=30)
+
+
+                    songs_processed = len(entries_added)
+                    drop_count = 0
+                    skipped = False
+
+                    if self.permissions.max_song_length:
+                        for e in entries_added.copy():
+                            if e.duration > self.permissions.max_song_length:
+                                try:
+                                    self.player.playlist.entries.remove(e)
+                                    entries_added.remove(e)
+                                    drop_count += 1
+                                except:
+                                    pass
+
+                        if drop_count:
+                            print("Dropped %s songs" % drop_count)
+
+                        if self.player.current_entry and self.player.current_entry.duration > self.permissions.max_song_length:
+                            await self.bot.safe_delete_message(self.bot.server_specific_data[self.channel.server]['last_np_msg'])
+                            self.bot.server_specific_data[self.channel.server]['last_np_msg'] = None
+                            skipped = True
+                            self.player.skip()
+                            entries_added.pop()
+
+                    await self.bot.safe_delete_message(busymsg)
+                    await self.bot.safe_delete_message(self.message)
+
+                    songs_added = len(entries_added)
+                    tnow = time.time()
+                    ttime = tnow - t0
+                    wait_per_song = 1.2
+                    # TODO: actually calculate wait per song in the process function and return that too
+
+                    # This is technically inaccurate since bad songs are ignored but still take up time
+                    print("Processed {}/{} songs in {} seconds at {:.2f}s/song, {:+.2g}/song from expected ({}s)".format(
+                        songs_processed,
+                        num_songs,
+                        self.bot._fixg(ttime),
+                        ttime / num_songs,
+                        ttime / num_songs - wait_per_song,
+                        self.bot._fixg(wait_per_song * num_songs))
+                    )
+
+                    if not songs_added:
+                        basetext = "No songs were added, all songs were over max duration (%ss)" % permissions.max_song_length
+                        if skipped:
+                            basetext += "\nAdditionally, the current song was skipped for being too long."
+
+                        raise exceptions.CommandError(basetext, expire_in=30)
+
+                    await self.bot.safe_send_message_check(
+                        self.channel,
+                        "Enqueued `{}` songs to be played in `{}` seconds".format(
+                            songs_added, self.bot._fixg(ttime, 1)),
+                        expire_in=30
+                    )
+                    return
+
+                #    return await self.bot._cmd_play_playlist_async(self.player, self.channel, self.message, self.author, self.permissions, song_url, info['extractor'])
                 except exceptions.CommandError:
                     raise
                 except Exception as e:
                     traceback.print_exc()
                     raise exceptions.CommandError("Error queuing playlist:\n%s" % e, expire_in=30)
-
-            t0 = time.time()
-
-            # My test was 1.2 seconds per song, but we maybe should fudge it a bit, unless we can
-            # monitor it and edit the message with the estimated time, but that's some ADVANCED SHIT
-            # I don't think we can hook into it anyways, so this will have to do.
-            # It would probably be a thread to check a few playlists and get the speed from that
-            # Different playlists might download at different speeds though
-            wait_per_song = 1.2
-
-            procmesg = await self.bot.safe_send_message(
-                self.channel,
-                'Gathering playlist information for {} songs{}'.format(
-                    num_songs,
-                    ', ETA: {} seconds'.format(self._fixg(
-                        num_songs * wait_per_song)) if num_songs >= 10 else '.'))
-
-            # We don't have a pretty way of doing this yet.  We need either a loop
-            # that sends these every 10 seconds or a nice context manager.
-            await self.send_typing(self.channel)
-
-            # TODO: I can create an event emitter object instead, add event functions, and every play list might be asyncified
-            #       Also have a "verify_entry" hook with the entry as an arg and returns the entry if its ok
-
-            entry_list, position = await self.player.playlist.import_from(song_url, channel=self.channel, author=self.author)
-
-            tnow = time.time()
-            ttime = tnow - t0
-            listlen = len(entry_list)
-            drop_count = 0
-
-            if self.permissions.max_song_length:
-                for e in entry_list.copy():
-                    if e.duration > self.permissions.max_song_length:
-                        self.player.playlist.entries.remove(e)
-                        entry_list.remove(e)
-                        drop_count += 1
-                        # Im pretty sure there's no situation where this would ever break
-                        # Unless the first entry starts being played, which would make this a race condition
-                if drop_count:
-                    print("Dropped %s songs" % drop_count)
-
-            print("Processed {} songs in {} seconds at {:.2f}s/song, {:+.2g}/song from expected ({}s)".format(
-                listlen,
-                self._fixg(ttime),
-                ttime / listlen,
-                ttime / listlen - wait_per_song,
-                self._fixg(wait_per_song * num_songs))
-            )
-
-            await self.bot.safe_delete_message(procmesg)
-
-            if not listlen - drop_count:
-                raise exceptions.CommandError(
-                    "No songs were added, all songs were over max duration (%ss)" % self.permissions.max_song_length,
-                    expire_in=30
-                )
-
-            reply_text = "Enqueued **%s** songs to be played. Position in queue: %s"
-            btext = str(listlen - drop_count)
 
         else:
             if self.permissions.max_song_length and info.get('duration', 0) > self.permissions.max_song_length:

@@ -99,3 +99,6 @@ def get_command(command_string):
         elif command_string in command.aliases:
             return command
     return None
+
+def get_commands():
+    return commands

@@ -1,5 +1,7 @@
 from textwrap import dedent
+
 from musicbot.commands.command import Command
+from musicbot.commands.command_manager import get_command, get_commands
 
 class HelpCommand(Command):
     """
@@ -24,7 +26,7 @@ class HelpCommand(Command):
             command = self.leftover_args[0]
 
         if command:
-            cmd = Command.get_command(command)
+            cmd = get_command(command)
             if cmd:
                 await self.bot.safe_send_message_check(
                     self.channel,
@@ -47,7 +49,7 @@ class HelpCommand(Command):
             helpmsg = "**Commands**\n```"
             commands = []
 
-            for cmd in Command.commands:
+            for cmd in get_commands():
                 commands.append("{}{}".format(self.bot.config.command_prefix, cmd.trigger))
 
             helpmsg += ", ".join(commands)
