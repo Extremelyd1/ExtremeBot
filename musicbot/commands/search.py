@@ -105,21 +105,20 @@ class SearchCommand(Command):
             )
             return
 
-        def check(m):
+        def check(r, u):
             return (
-                m.content.lower()[0] in 'yn' or
-                m.content.lower().startswith('{}{}'.format(self.bot.config.command_prefix, SearchCommand.trigger)) or
-                m.content.lower().startswith('{}{}'.format(self.bot.config.command_prefix, (alias for alias in SearchCommand.aliases))) or
-                m.content.lower().startswith('exit'))
+                r.emoji in ['✅', '❌'])
 
         for e in info['entries']:
             result_message = await self.bot.safe_send_message(self.channel, "Result %s/%s: %s" % (
                 info['entries'].index(e) + 1, len(info['entries']), e['webpage_url']))
 
-            confirm_message = await self.bot.safe_send_message(self.channel, "Is this ok? Type `y`, `n` or `exit`")
-            response_message = await self.bot.wait_for_message(30, author=self.author, channel=self.channel, check=check)
+            confirm_message = await self.bot.safe_send_message(self.channel, "Is this ok? Click :white_check_mark: to confirm, :x: to see next")
+            await self.bot.add_reaction(confirm_message, '❌')
+            await self.bot.add_reaction(confirm_message, '✅')
+            response_reaction = await self.bot.wait_for_reaction(user=self.author, timeout=30, message=confirm_message, check=check)
 
-            if not response_message:
+            if not response_reaction:
                 await self.bot.safe_delete_message(result_message)
                 await self.bot.safe_delete_message(confirm_message)
                 await self.bot.safe_send_message(
@@ -130,23 +129,24 @@ class SearchCommand(Command):
 	            )
                 return
 
+			# This is problematic since we cannot both check for a reaction and a message to pop up:
+
             # They started a new search query so lets clean up and bugger off
-            elif response_message.content.startswith(self.bot.config.command_prefix) or \
-                    response_message.content.lower().startswith('exit'):
+            # elif response_message.content.startswith(self.bot.config.command_prefix) or \
+            #         response_message.content.lower().startswith('exit'):
+			#
+            #     await self.bot.safe_delete_message(result_message)
+            #     await self.bot.safe_delete_message(confirm_message)
+            #     await self.bot.safe_delete_message(self.message)
+			#
+            #     if response_message.content.lower().startswith('exit'):
+            #         await self.bot.safe_delete_message(response_message)
+			#
+            #     return
 
+            if response_reaction.reaction.emoji == '✅':
                 await self.bot.safe_delete_message(result_message)
                 await self.bot.safe_delete_message(confirm_message)
-                await self.bot.safe_delete_message(self.message)
-
-                if response_message.content.lower().startswith('exit'):
-                    await self.bot.safe_delete_message(response_message)
-
-                return
-
-            if response_message.content.lower().startswith('y'):
-                await self.bot.safe_delete_message(result_message)
-                await self.bot.safe_delete_message(confirm_message)
-                await self.bot.safe_delete_message(response_message)
 
                 # This returned the class
                 playCommandClass = get_command('play')
@@ -174,7 +174,6 @@ class SearchCommand(Command):
             else:
                 await self.bot.safe_delete_message(result_message)
                 await self.bot.safe_delete_message(confirm_message)
-                await self.bot.safe_delete_message(response_message)
 
         await self.bot.safe_send_message(
             self.channel,
