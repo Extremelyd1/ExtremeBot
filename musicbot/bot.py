@@ -486,7 +486,7 @@ class MusicBot(discord.Client):
             name = u'{}{}'.format(prefix, entry.title)[:128]
             game = discord.Game(name=name)
 
-        await self.change_status(game)
+        await self.change_presence(game=game)
 
     async def safe_send_message_check(self, dest, content, *, tts=False, expire_in=0, also_delete=None, quiet=False):
         expire_in = expire_in if self.config.delete_messages else 0
@@ -779,6 +779,22 @@ class MusicBot(discord.Client):
         await self.wait_until_ready()
 
         message_content = message.content.strip()
+
+        # if message_content.startswith('$test'):
+        #     msg1 = await self.send_message(message.channel, 'Is this ok?')
+        #     msg = await self.send_message(message.channel, 'Click :white_check_mark: to confirm, :x: to see next')
+        #     await self.add_reaction(msg, '❌')
+        #     await self.add_reaction(msg, '✅')
+        #     res = await self.wait_for_reaction(['✅', '❌'], user=message.author, message=msg)
+        #     if (res.reaction.emoji == '✅'):
+        #         msg3 = await self.send_message(message.channel, 'Nice!')
+        #     else:
+        #         msg3 = await self.send_message(message.channel, 'Aborted!')
+        #     await self.safe_delete_message(msg1)
+        #     await self.safe_delete_message(msg)
+        #     await self.safe_delete_message(message)
+        #     return
+
         if not message_content.startswith(self.config.command_prefix):
             if self.config.main_channel and message.channel.id == self.config.main_channel and not message.author == self.user:
                 await self.safe_delete_message(message, quiet=True)
