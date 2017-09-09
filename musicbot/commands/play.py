@@ -245,7 +245,7 @@ class PlayCommand(Command):
         else:
             try:
                 time_until = await self.player.playlist.estimate_time_until(position, self.player)
-                reply_text += ' - estimated time until playing: %s'
+                reply_text += ' - estimated time until playing: `%s`'
             except:
                 traceback.print_exc()
                 time_until = ''

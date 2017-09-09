@@ -16,22 +16,30 @@ class NowPlayingCommand(Command):
 
     async def run(self):
         if self.player.current_entry:
-            if self.bot.server_specific_data[self.server]['last_np_msg']:
-                await self.bot.safe_delete_message(self.bot.server_specific_data[self.server]['last_np_msg'])
-                self.bot.server_specific_data[self.server]['last_np_msg'] = None
+            last_np_embed = self.bot.server_specific_data[self.server]['last_np_embed']
 
             song_progress = str(timedelta(seconds=self.player.progress)).lstrip('0').lstrip(':')
             song_total = str(timedelta(seconds=self.player.current_entry.duration)).lstrip('0').lstrip(':')
             prog_str = '`[%s/%s]`' % (song_progress, song_total)
 
             if self.player.current_entry.meta.get('channel', False) and self.player.current_entry.meta.get('author', False):
-                np_text = "Now Playing: **%s** added by **%s** %s\n" % (
-                    self.player.current_entry.title, self.player.current_entry.meta['author'].name, prog_str)
+                author = self.player.current_entry.meta.get('author', False)
+                last_np_embed.set_footer(text='Requested by %s' % author.name, icon_url=author.avatar_url)
             else:
-                np_text = "Now Playing: **%s** %s\n" % (self.player.current_entry.title, prog_str)
+                last_np_embed.set_footer()
 
-            self.bot.server_specific_data[self.server]['last_np_msg'] = await self.bot.safe_send_message(self.channel, np_text)
+            last_np_embed.set_field_at(1, name='Status', value='Playing %s' % prog_str)
+
             await self.bot._manual_delete_check(self.message)
+
+            last_np_msg = self.bot.server_specific_data[self.server]['last_np_msg']
+
+            if last_np_msg:
+                self.bot.server_specific_data[self.server]['last_np_msg'] = await self.bot.safe_edit_message(last_np_msg, new_content='Current song:', embed=last_np_embed)
+            else:
+                self.bot.server_specific_data[self.server]['last_np_msg'] = await self.bot.safe_send_message(self.channel, content='Current song:', embed=last_np_embed)
+
+            self.bot.server_specific_data[self.server]['last_np_embed'] = last_np_embed
         else:
             await self.bot.safe_send_message_check(
                 self.channel,

@@ -121,11 +121,11 @@ class SearchCommand(Command):
             if not response_reaction:
                 await self.bot.safe_delete_message(result_message)
                 await self.bot.safe_delete_message(confirm_message)
+                await self.bot.safe_delete_message(self.message)
                 await self.bot.safe_send_message(
                     self.channel,
                     'Ok nevermind.',
-                    expire_in=30,
-                    also_delete=self.message
+                    expire_in=20
 	            )
                 return
 
@@ -161,11 +161,12 @@ class SearchCommand(Command):
                 playCommand.permissions = self.permissions
                 playCommand.leftover_args = [e['webpage_url']]
 
+                await self.bot.safe_delete_message(self.message)
+
                 await self.bot.safe_send_message(
                     self.channel,
                     'Alright, coming right up!',
-                    expire_in=30,
-                    also_delete=self.message
+                    expire_in=10
 	            )
 
                 await playCommand.run()
@@ -175,9 +176,10 @@ class SearchCommand(Command):
                 await self.bot.safe_delete_message(result_message)
                 await self.bot.safe_delete_message(confirm_message)
 
+        await self.bot.safe_delete_message(self.message)
+
         await self.bot.safe_send_message(
             self.channel,
             'Oh well :frowning:',
-            expire_in=30,
-            also_delete=self.message
+            expire_in=20
         )

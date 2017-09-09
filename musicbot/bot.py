@@ -7,6 +7,7 @@ import inspect
 import aiohttp
 import discord
 import asyncio
+import datetime
 import traceback
 
 from discord import utils
@@ -18,7 +19,7 @@ from discord.ext.commands.bot import _get_variable
 from io import BytesIO
 from functools import wraps
 from textwrap import dedent
-from datetime import timedelta
+from datetime import timedelta, datetime
 from random import choice, shuffle
 from collections import defaultdict
 
@@ -26,7 +27,7 @@ from musicbot.playlist import Playlist
 from musicbot.player import MusicPlayer
 from musicbot.config import Config, ConfigDefaults
 from musicbot.permissions import Permissions, PermissionsDefaults
-from musicbot.utils import load_file, write_file, sane_round_int, case_sensitive_replace
+from musicbot.utils import load_file, write_file, sane_round_int
 
 from . import exceptions
 from . import downloader
@@ -95,7 +96,7 @@ class MusicBot(discord.Client):
             self.config.auto_playlist = False
 
         # TODO: Do these properly
-        ssd_defaults = {'last_np_msg': None, 'auto_paused': False}
+        ssd_defaults = {'last_np_msg': None, 'last_np_embed': None,'auto_paused': False}
         self.server_specific_data = defaultdict(lambda: dict(ssd_defaults))
 
         super().__init__()
@@ -381,8 +382,6 @@ class MusicBot(discord.Client):
         await self.update_now_playing(entry)
         player.skip_state.reset()
 
-        channel = None
-
         if self.config.main_channel:
             channel = self.get_channel(self.config.main_channel)
         else:
@@ -392,7 +391,6 @@ class MusicBot(discord.Client):
 
         if channel:
             voice_channel = player.voice_client.channel
-            paused = False
 
             if not sum(1 for m in voice_channel.voice_members if m != channel.server.me):
                 if not self.config.auto_pause:
@@ -405,7 +403,6 @@ class MusicBot(discord.Client):
 
                 print("[config:autopause] Pausing (channel empty)")
                 self.server_specific_data[channel.server]['auto_paused'] = True
-                paused = True
                 player.pause()
 
             last_np_msg = self.server_specific_data[channel.server]['last_np_msg']
@@ -416,17 +413,46 @@ class MusicBot(discord.Client):
                         self.server_specific_data[channel.server]['last_np_msg'] = None
                     break  # This is probably redundant
 
-            if self.config.now_playing_mentions and author:
-                newmsg = '{} - your song **{}** is {} in {}!'.format(
-                    author.mention, entry.title, 'now playing' if not paused else 'paused', player.voice_client.channel.name)
-            else:
-                newmsg = '{} in {}: **{}**'.format(
-                'Now playing' if not paused else 'Paused', player.voice_client.channel.name, entry.title)
+            newembed = await self.create_now_playing(entry)
 
             if self.server_specific_data[channel.server]['last_np_msg']:
-                self.server_specific_data[channel.server]['last_np_msg'] = await self.safe_edit_message(last_np_msg, newmsg, send_if_fail=True)
+                self.server_specific_data[channel.server]['last_np_msg'] = await self.safe_edit_message(last_np_msg, new_content='Current song:', embed=newembed, send_if_fail=True)
             else:
-                self.server_specific_data[channel.server]['last_np_msg'] = await self.safe_send_message(channel, newmsg)
+                self.server_specific_data[channel.server]['last_np_msg'] = await self.safe_send_message(channel, content='Current song:', embed=newembed)
+
+            self.server_specific_data[channel.server]['last_np_embed'] = newembed
+
+    async def create_now_playing(self, entry):
+        em = discord.Embed(colour=0xFF0000, url=entry.url)
+
+        em.set_author(name=entry.title, icon_url='http://i.imgur.com/QU6GAqz.png')
+
+        if 'youtu.be' in entry.url:
+            youtube_url_id = entry.url.split('outu.be/')[1]
+        else:
+            youtube_url_id = entry.url.split('watch?v=')[1].split('&')[0]
+
+        em.set_thumbnail(url='http://i3.ytimg.com/vi/%s/maxresdefault.jpg' % youtube_url_id)
+
+        duration = str(timedelta(seconds=entry.duration)).lstrip('0').lstrip(':')
+
+        em.add_field(name='Length:', value=duration, inline=True)
+
+        if self.config.main_channel:
+            channel = self.get_channel(self.config.main_channel)
+        else:
+            channel = entry.meta.get('channel', None)
+
+        paused = self.server_specific_data[channel.server]['auto_paused']
+
+        em.add_field(name='Status:', value='Paused' if paused else 'Playing', inline=True)
+
+        author = entry.meta.get('author', None)
+
+        if author:
+            em.set_footer(text='Requested by %s' % author.name, icon_url=author.avatar_url)
+
+        return em
 
     async def on_player_resume(self, entry, **_):
         await self.update_now_playing(entry)
@@ -490,15 +516,15 @@ class MusicBot(discord.Client):
 
         await self.change_presence(game=game)
 
-    async def safe_send_message_check(self, dest, content, *, tts=False, expire_in=0, also_delete=None, quiet=False):
+    async def safe_send_message_check(self, dest, content=None, *, tts=False, embed=None, expire_in=0, also_delete=None, quiet=False):
         expire_in = expire_in if self.config.delete_messages else 0
         also_delete = also_delete if self.config.delete_invoking else None
         return await self.safe_send_message(dest, content, tts=tts, expire_in=expire_in, also_delete=also_delete, quiet=quiet)
 
-    async def safe_send_message(self, dest, content, *, tts=False, expire_in=0, also_delete=None, quiet=False):
+    async def safe_send_message(self, dest, content=None, *, tts=False, embed=None, expire_in=0, also_delete=None, quiet=False):
         msg = None
         try:
-            msg = await self.send_message(dest, content, tts=tts)
+            msg = await self.send_message(dest, content=content, tts=tts, embed=embed)
 
             if msg and expire_in:
                 asyncio.ensure_future(self._wait_delete_msg(msg, expire_in))
@@ -531,9 +557,9 @@ class MusicBot(discord.Client):
             if not quiet:
                 self.safe_print("Warning: Cannot delete message \"%s\", message not found" % message.clean_content)
 
-    async def safe_edit_message(self, message, new, *, send_if_fail=False, quiet=False):
+    async def safe_edit_message(self, message, new_content=None, *, embed=None, send_if_fail=False, quiet=False):
         try:
-            return await self.edit_message(message, new)
+            return await self.edit_message(message, new_content=new_content, embed=embed)
 
         except discord.NotFound:
             if not quiet:
@@ -541,7 +567,7 @@ class MusicBot(discord.Client):
             if send_if_fail:
                 if not quiet:
                     print("Sending instead")
-                return await self.safe_send_message(message.channel, new)
+                return await self.safe_send_message(message.channel, content=new_content)
 
     def safe_print(self, content, *, end='\n', flush=True):
         sys.stdout.buffer.write((content + end).encode('utf-8', 'replace'))
@@ -782,21 +808,6 @@ class MusicBot(discord.Client):
 
         message_content = message.content.strip()
 
-        # if message_content.startswith('$test'):
-        #     msg1 = await self.send_message(message.channel, 'Is this ok?')
-        #     msg = await self.send_message(message.channel, 'Click :white_check_mark: to confirm, :x: to see next')
-        #     await self.add_reaction(msg, '❌')
-        #     await self.add_reaction(msg, '✅')
-        #     res = await self.wait_for_reaction(['✅', '❌'], user=message.author, message=msg)
-        #     if (res.reaction.emoji == '✅'):
-        #         msg3 = await self.send_message(message.channel, 'Nice!')
-        #     else:
-        #         msg3 = await self.send_message(message.channel, 'Aborted!')
-        #     await self.safe_delete_message(msg1)
-        #     await self.safe_delete_message(msg)
-        #     await self.safe_delete_message(message)
-        #     return
-
         if not message_content.startswith(self.config.command_prefix):
             if self.config.main_channel and message.channel.id == self.config.main_channel and not message.author == self.user:
                 await self.safe_delete_message(message, quiet=True)
@@ -932,33 +943,30 @@ class MusicBot(discord.Client):
             return
 
         last_np_msg = self.server_specific_data[after.server]['last_np_msg']
+        last_np_embed = self.server_specific_data[after.server]['last_np_embed']
 
-        if not last_np_msg == None:
+        if last_np_msg and last_np_embed:
             if auto_paused and player.is_paused:
-                if self.config.now_playing_mentions:
-                    new_msg = last_np_msg.content.replace('paused', 'now playing', 1)
-                else:
-                    new_msg = last_np_msg.content.replace('Paused', 'Now playing', 1)
+                last_np_embed.set_field_at(1, name='Status:', value='Playing', inline=True)
             elif not auto_paused and player.is_playing:
-                if self.config.now_playing_mentions:
-                    new_msg = last_np_msg.content.replace('now playing', 'paused', 1)
-                else:
-                    new_msg = last_np_msg.content.replace('Now playing', 'Paused', 1)
+                last_np_embed.set_field_at(1, name='Status:', value='Paused', inline=True)
 
         if sum(1 for m in my_voice_channel.voice_members if m != after.server.me):
             if auto_paused and player.is_paused:
                 print("[config:autopause] Unpausing")
                 self.server_specific_data[after.server]['auto_paused'] = False
                 player.resume()
-                if not last_np_msg == None:
-                    self.server_specific_data[after.server]['last_np_msg'] = await self.safe_edit_message(last_np_msg, new_msg)
+                if last_np_msg:
+                    self.server_specific_data[after.server]['last_np_msg'] = await self.safe_edit_message(last_np_msg, new_content='Current song:', embed=last_np_embed)
+                    self.server_specific_data[after.server]['last_np_embed'] = last_np_embed
         else:
             if not auto_paused and player.is_playing:
                 print("[config:autopause] Pausing")
                 self.server_specific_data[after.server]['auto_paused'] = True
                 player.pause()
-                if not last_np_msg == None:
-                    self.server_specific_data[after.server]['last_np_msg'] = await self.safe_edit_message(last_np_msg, new_msg)
+                if last_np_msg:
+                    self.server_specific_data[after.server]['last_np_msg'] = await self.safe_edit_message(last_np_msg, new_content='Current song:', embed=last_np_embed)
+                    self.server_specific_data[after.server]['last_np_embed'] = last_np_embed
 
     async def on_server_update(self, before:discord.Server, after:discord.Server):
         if before.region != after.region:
