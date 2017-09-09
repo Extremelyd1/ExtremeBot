@@ -26,7 +26,7 @@ from musicbot.playlist import Playlist
 from musicbot.player import MusicPlayer
 from musicbot.config import Config, ConfigDefaults
 from musicbot.permissions import Permissions, PermissionsDefaults
-from musicbot.utils import load_file, write_file, sane_round_int
+from musicbot.utils import load_file, write_file, sane_round_int, case_sensitive_replace
 
 from . import exceptions
 from . import downloader
@@ -391,27 +391,8 @@ class MusicBot(discord.Client):
         author = entry.meta.get('author', None)
 
         if channel:
-            last_np_msg = self.server_specific_data[channel.server]['last_np_msg']
-            if last_np_msg and last_np_msg.channel == channel:
-                async for lmsg in self.logs_from(channel, limit=1):
-                    if lmsg != last_np_msg and last_np_msg:
-                        await self.safe_delete_message(last_np_msg)
-                        self.server_specific_data[channel.server]['last_np_msg'] = None
-                    break  # This is probably redundant
-
-            if self.config.now_playing_mentions and author:
-                newmsg = '%s - your song **%s** is now playing in %s!' % (
-                    author.mention, entry.title, player.voice_client.channel.name)
-            else:
-                newmsg = 'Now playing in %s: **%s**' % (
-                    player.voice_client.channel.name, entry.title)
-
-            if self.server_specific_data[channel.server]['last_np_msg']:
-                self.server_specific_data[channel.server]['last_np_msg'] = await self.safe_edit_message(last_np_msg, newmsg, send_if_fail=True)
-            else:
-                self.server_specific_data[channel.server]['last_np_msg'] = await self.safe_send_message(channel, newmsg)
-
             voice_channel = player.voice_client.channel
+            paused = False
 
             if not sum(1 for m in voice_channel.voice_members if m != channel.server.me):
                 if not self.config.auto_pause:
@@ -424,7 +405,28 @@ class MusicBot(discord.Client):
 
                 print("[config:autopause] Pausing (channel empty)")
                 self.server_specific_data[channel.server]['auto_paused'] = True
+                paused = True
                 player.pause()
+
+            last_np_msg = self.server_specific_data[channel.server]['last_np_msg']
+            if last_np_msg and last_np_msg.channel == channel:
+                async for lmsg in self.logs_from(channel, limit=1):
+                    if lmsg != last_np_msg and last_np_msg:
+                        await self.safe_delete_message(last_np_msg)
+                        self.server_specific_data[channel.server]['last_np_msg'] = None
+                    break  # This is probably redundant
+
+            if self.config.now_playing_mentions and author:
+                newmsg = '{} - your song **{}** is {} in {}!'.format(
+                    author.mention, entry.title, 'now playing' if not paused else 'paused', player.voice_client.channel.name)
+            else:
+                newmsg = '{} in {}: **{}**'.format(
+                'Now playing' if not paused else 'Paused', player.voice_client.channel.name, entry.title)
+
+            if self.server_specific_data[channel.server]['last_np_msg']:
+                self.server_specific_data[channel.server]['last_np_msg'] = await self.safe_edit_message(last_np_msg, newmsg, send_if_fail=True)
+            else:
+                self.server_specific_data[channel.server]['last_np_msg'] = await self.safe_send_message(channel, newmsg)
 
     async def on_player_resume(self, entry, **_):
         await self.update_now_playing(entry)
@@ -929,16 +931,34 @@ class MusicBot(discord.Client):
         if not self.config.auto_pause:
             return
 
+        last_np_msg = self.server_specific_data[after.server]['last_np_msg']
+
+        if not last_np_msg == None:
+            if auto_paused and player.is_paused:
+                if self.config.now_playing_mentions:
+                    new_msg = last_np_msg.content.replace('paused', 'now playing', 1)
+                else:
+                    new_msg = last_np_msg.content.replace('Paused', 'Now playing', 1)
+            elif not auto_paused and player.is_playing:
+                if self.config.now_playing_mentions:
+                    new_msg = last_np_msg.content.replace('now playing', 'paused', 1)
+                else:
+                    new_msg = last_np_msg.content.replace('Now playing', 'Paused', 1)
+
         if sum(1 for m in my_voice_channel.voice_members if m != after.server.me):
             if auto_paused and player.is_paused:
                 print("[config:autopause] Unpausing")
                 self.server_specific_data[after.server]['auto_paused'] = False
                 player.resume()
+                if not last_np_msg == None:
+                    self.server_specific_data[after.server]['last_np_msg'] = await self.safe_edit_message(last_np_msg, new_msg)
         else:
             if not auto_paused and player.is_playing:
                 print("[config:autopause] Pausing")
                 self.server_specific_data[after.server]['auto_paused'] = True
                 player.pause()
+                if not last_np_msg == None:
+                    self.server_specific_data[after.server]['last_np_msg'] = await self.safe_edit_message(last_np_msg, new_msg)
 
     async def on_server_update(self, before:discord.Server, after:discord.Server):
         if before.region != after.region:
