@@ -60,7 +60,7 @@ class CleanCommand(Command):
 
         deleted = 0
         async for entry in self.bot.logs_from(self.channel, search_range, before=self.message):
-            if entry == self.bot.server_specific_data[self.server]['last_np_msg']:
+            if entry == self.bot.server_specific_data[self.server]['last_np_msg'] or entry == self.bot.server_specific_data[self.server]['last_np_embed']:
                 continue
 
             if entry.author == self.bot.user:

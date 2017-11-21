@@ -406,7 +406,7 @@ class MusicBot(discord.Client):
                 player.pause()
 
             last_np_msg = self.server_specific_data[channel.server]['last_np_msg']
-            if last_np_msg and last_np_msg.channel == channel:
+            if last_np_msg and last_np_msg.channel == channel and not self.config.delete_messages:
                 async for lmsg in self.logs_from(channel, limit=1):
                     if lmsg != last_np_msg and last_np_msg:
                         await self.safe_delete_message(last_np_msg)
