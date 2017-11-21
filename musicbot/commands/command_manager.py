@@ -6,7 +6,7 @@ from musicbot.colorama import Fore, Back, Style
 commands = []
 
 # All commands to load, only used in super Command class
-toload = ['Link', 'SetAvatar', 'SetNick', 'SetName', 'JoinServer', 'Help', 'Play', 'Search', 'Queue', 'Clean',
+toload = ['CreateChannel', 'Link', 'SetAvatar', 'SetNick', 'SetName', 'JoinServer', 'Help', 'Play', 'Search', 'Queue', 'Clean',
 'Clear', 'Blacklist', 'Restart', 'Disconnect', 'Shutdown', 'Skip', 'NowPlaying', 'Pause', 'Resume', 'Shuffle',
     'ListIds', 'Summon', 'Volume', 'Pldump', 'Perms', 'Id']
 

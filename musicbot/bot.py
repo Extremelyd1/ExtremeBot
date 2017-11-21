@@ -84,6 +84,8 @@ class MusicBot(discord.Client):
         self.autoplaylist = load_file(self.config.auto_playlist_file)
         self.downloader = downloader.Downloader(download_folder='audio_cache')
 
+        self.channels = []
+
         self.exit_signal = None
         self.init_ok = False
         self.cached_client_id = None
@@ -199,6 +201,10 @@ class MusicBot(discord.Client):
     async def _manual_delete_check(self, message, *, quiet=False):
         if self.config.delete_invoking:
             await self.safe_delete_message(message, quiet=quiet)
+
+    async def _wait_delete_channel(self, channel_id, server, after, quiet=False):
+        await asyncio.sleep(after)
+        await self.safe_delete_channel(channel_id, server, quiet)
 
     async def _check_ignore_non_voice(self, msg):
         vc = msg.server.me.voice_channel
@@ -569,6 +575,30 @@ class MusicBot(discord.Client):
                     print("Sending instead")
                 return await self.safe_send_message(message.channel, content=new_content)
 
+    async def safe_delete_channel(self, channel_id, server, quiet=False):
+
+        quiet = True
+
+        channel = discord.utils.find(lambda c: c.id == channel_id, server.channels)
+
+        if not channel:
+            return
+
+        if len(channel.voice_members) == 0:
+            try:
+                await self.delete_channel(channel)
+                self.channels.remove(channel_id)
+                self.safe_print("Deleted channel \"%s\" due to inactivity" % channel.name)
+            except discord.Forbidden:
+                if not quiet:
+                    self.safe_print("Warning: Cannot delete channel \"%s\", no permission" % channel.name)
+
+            except discord.NotFound:
+                if not quiet:
+                    self.safe_print("Warning: Cannot delete channel \"%s\", channel not found" % channel.name)
+        else:
+            self.safe_print("No deletion of \"%s\", still active" % channel.name)
+
     def safe_print(self, content, *, end='\n', flush=True):
         sys.stdout.buffer.write((content + end).encode('utf-8', 'replace'))
         if flush: sys.stdout.flush()
@@ -912,6 +942,12 @@ class MusicBot(discord.Client):
 
         if not all([before, after]):
             return
+
+        if before.voice_channel and not after.voice_channel: # Means that someone left the channel
+            if before.voice_channel.id in self.channels: # One of the created channels
+                if len(before.voice_channel.voice_members) == 0:
+                    self.safe_print("Queued channel \"%s\" for deletion" % before.voice_channel.name)
+                    asyncio.ensure_future(self._wait_delete_channel(before.voice_channel.id, before.server, 30, quiet=True))
 
         if before.voice_channel == after.voice_channel:
             return
