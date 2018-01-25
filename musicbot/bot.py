@@ -72,6 +72,8 @@ class MusicBot(discord.Client):
         self.autoplaylist = load_file(self.config.auto_playlist_file)
         self.autoplaylist_session = self.autoplaylist[:]
 
+        self.channels = []
+
         self.aiolocks = defaultdict(asyncio.Lock)
         self.downloader = downloader.Downloader(download_folder='audio_cache')
 
@@ -726,9 +728,7 @@ class MusicBot(discord.Client):
         last_np_embed = self.server_specific_data[server]['last_np_embed']
 
         if not channel:
-            for ch in self.config.bound_channels:
-                channel = self.get_channel(ch)
-                break
+            channel = self.get_channel(self.config.main_channel)
         if not server:
             server = channel.server;
 
@@ -778,9 +778,8 @@ class MusicBot(discord.Client):
         em.add_field(name='Length:', value=duration, inline=True)
 
         channel = None
-        for ch in self.config.bound_channels:
-            channel = self.get_channel(ch)
-            break
+        if self.config.main_channel:
+            channel = self.get_channel(self.config.main_channel)
 
         if not channel:
             channel = entry.meta.get('channel', None)
@@ -964,16 +963,16 @@ class MusicBot(discord.Client):
             try:
                 await self.delete_channel(channel)
                 self.channels.remove(channel_id)
-                self.safe_print("Deleted channel \"%s\" due to inactivity" % channel.name)
+                log.debug("Deleted channel \"%s\" due to inactivity" % channel.id)
             except discord.Forbidden:
                 if not quiet:
-                    self.safe_print("Warning: Cannot delete channel \"%s\", no permission" % channel.name)
+                    log.info("Warning: Cannot delete channel \"%s\", no permission" % channel.id)
 
             except discord.NotFound:
                 if not quiet:
-                    self.safe_print("Warning: Cannot delete channel \"%s\", channel not found" % channel.name)
+                    log.info("Warning: Cannot delete channel \"%s\", channel not found" % channel.id)
         else:
-            self.safe_print("No deletion of \"%s\", still active" % channel.name)
+            log.debug("No deletion of \"%s\", still active" % channel.id)
 
     async def send_typing(self, destination):
         try:
@@ -1190,9 +1189,8 @@ class MusicBot(discord.Client):
         print(flush=True)
 
         main_channel = None
-        for ch in self.config.bound_channels:
-            main_channel = self.get_channel(ch)
-            break
+        if self.config.main_channel:
+            main_channel = self.get_channel(self.config.main_channel)
 
         await self.cmd_clean(None, main_channel, main_channel.server, main_channel.server.get_member(self.config.owner_id), search_range=1000, quiet=True)
 
@@ -1323,7 +1321,7 @@ class MusicBot(discord.Client):
             raise exceptions.CommandError('There is no valid song playing.')
 
     @owner_only
-    async def cmd_cc(self, message, user_mentions, size=None, force=False):
+    async def cmd_cc(self, message, user_mentions, leftover_args):
         """
         Usage:
             {command_prefix}createchannel [size] @UserName [@UserName2 ...]
@@ -1331,20 +1329,33 @@ class MusicBot(discord.Client):
         Creates a channel with designated size and join permissions for mentioned users.
         """
 
-        return cmd_createchannel(message, user_mentions, size, force)
+        return await self.cmd_createchannel(message, user_mentions, leftover_args)
 
     @owner_only
-    async def cmd_createchannel(self, message, user_mentions, size=None, force=False):
+    async def cmd_createchannel(self, message, user_mentions, leftover_args):
         """
         Usage:
             {command_prefix}createchannel [size] @UserName [@UserName2 ...]
 
         Creates a channel with designated size and join permissions for mentioned users.
         """
+
+        size = None
+        if leftover_args[0].isdigit():
+            size = leftover_args.pop(0)
+
+        if user_mentions:
+            for user in user_mentions:
+                leftover_args.pop(0)
+
+        force = None
+        if leftover_args:
+            force = leftover_args.pop(0)
+
         deny_perms = discord.PermissionOverwrite(connect=False)
         allow_perms = discord.PermissionOverwrite(connect=True)
 
-        channel = await self.create_channel(message.server, 'Private', (server.default_role, deny_perms), (message.author, allow_perms), type=discord.ChannelType.voice) # TODO: Add permissions based on mentions
+        channel = await self.create_channel(message.server, 'Private', (message.server.default_role, deny_perms), (message.author, allow_perms), type=discord.ChannelType.voice) # TODO: Add permissions based on mentions
 
         if size:
             await self.edit_channel(channel, user_limit=size)
@@ -1352,17 +1363,20 @@ class MusicBot(discord.Client):
         if user_mentions:
             for user in user_mentions:
                 await self.edit_channel_permissions(channel, discord.utils.find(lambda m : m.id == user.id, message.server.members), allow_perms)
-                if force:
+                if force in ['-f', '-force']:
                     await self.move_member(discord.utils.find(lambda m : m.id == user.id, message.server.members), channel)
 
         await self.move_channel(channel, 1)
 
+        self.channels.append(channel.id)
+
+        log.debug('Queued channel "%s" for deletion' % channel.id)
         asyncio.ensure_future(self._wait_delete_channel(channel.id, channel.server, 30))
 
         await self.safe_delete_message(message, quiet=True)
 
         return Response(
-            'Created voice channel "%s"' % (channel.name),
+            'Created voice channel %s' % (channel.mention),
             reply=True, delete_after=10
         )
 
@@ -2497,9 +2511,9 @@ class MusicBot(discord.Client):
         message_content = message.content.strip()
         if not message_content.startswith(self.config.command_prefix):
             main_channel = None
-            for ch in self.config.bound_channels:
-                main_channel = self.get_channel(ch)
-                break
+            if self.config.main_channel:
+                main_channel = self.get_channel(self.config.main_channel)
+
             if main_channel and message.channel == main_channel and not message.author == self.user:
                 await self.safe_delete_message(message, quiet=True)
             return
@@ -2700,6 +2714,11 @@ class MusicBot(discord.Client):
             vch = state.voice_channel,
             dif = state.changes
         ))
+
+        if state.old_voice_channel:
+            if state.old_voice_channel.id in self.channels and state.empty(excluding_me=False, excluding_deaf=False, old_channel=True): # No one in created voice channel
+                log.debug("Queued channel \"%s\" for deletion" % state.old_voice_channel.id)
+                asyncio.ensure_future(self._wait_delete_channel(state.old_voice_channel.id, state.old_voice_channel.server, 10, quiet=True)) # Queue for deletion
 
         if not state.is_about_my_voice_channel:
             return # Irrelevant channel
