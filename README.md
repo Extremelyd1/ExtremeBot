@@ -1,4 +1,4 @@
-# MusicBot
+# ExtremeBot (Forked from [MusicBot](https://github.com/Just-Some-Bots/MusicBot))
 
 [![GitHub release](https://img.shields.io/github/release/Just-Some-Bots/MusicBot.svg?style=flat-square)](https://github.com/Just-Some-Bots/MusicBot/wiki)
 [![Python](https://img.shields.io/badge/python-3.5%2C%203.6-blue.svg?style=flat-square)](https://www.python.org/downloads/)
