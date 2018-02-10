@@ -1344,8 +1344,9 @@ class MusicBot(discord.Client):
         """
 
         size = None
-        if leftover_args[0].isdigit():
-            size = leftover_args.pop(0)
+        if leftover_args:
+            if leftover_args[0].isdigit():
+                size = leftover_args.pop(0)
 
         if user_mentions:
             for user in user_mentions:
@@ -1358,7 +1359,7 @@ class MusicBot(discord.Client):
         deny_perms = discord.PermissionOverwrite(connect=False)
         allow_perms = discord.PermissionOverwrite(connect=True)
 
-        channel = await self.create_channel(message.server, 'Private', (message.server.default_role, deny_perms), (message.author, allow_perms), type=discord.ChannelType.voice) # TODO: Add permissions based on mentions
+        channel = await self.create_channel(message.server, 'Private-%s' % (len(self.channels) + 1), (message.server.default_role, deny_perms), (message.author, allow_perms), type=discord.ChannelType.voice) # TODO: Add permissions based on mentions
 
         if size:
             await self.edit_channel(channel, user_limit=size)
@@ -1380,6 +1381,84 @@ class MusicBot(discord.Client):
 
         return Response(
             'Created voice channel %s' % (channel.mention),
+            reply=True, delete_after=10
+        )
+
+    @owner_only
+    async def cmd_ec(self, message, user_mentions, leftover_args):
+        """
+        Usage:
+            {command_prefix}editchannel #channelName [size] [ + | - | add | remove ] [@UserName @UserName2 ...]
+
+        Edits a created channel to designated size or add/remove join permissions for mentioned users.
+        """
+
+        return await self.cmd_editchannel(message, user_mentions, leftover_args)
+
+    @owner_only
+    async def cmd_editchannel(self, message, user_mentions, leftover_args):
+        """
+        Usage:
+            {command_prefix}editchannel #channelName [size] [ + | - | add | remove ] [@UserName @UserName2 ...]
+
+        Edits a created channel to designated size or add/remove join permissions for mentioned users.
+        """
+
+        if len(leftover_args) < 1:
+            raise exceptions.CommandError("No channel listed.", expire_in=20)
+
+        channel = discord.utils.find(lambda c : c.name == leftover_args[0], message.server.channels)
+
+        if not channel or not channel.type == discord.ChannelType.voice:
+            return Response(
+                '%s could not be recognised as a voice channel' % leftover_args[0],
+                reply=True, delete_after=10
+            )
+
+        if not channel.id in self.channels:
+            raise exceptions.CommandError("Can only edit custom created channel.", expire_in=20)
+
+        leftover_args.pop(0)
+
+        if not leftover_args:
+            raise exceptions.CommandError("Please specify at least size or mention users", expire_in=20)
+
+        size = None
+        if leftover_args[0].isdigit():
+            size = leftover_args.pop(0)
+
+        option = '+'
+        if leftover_args:
+            if leftover_args[0] in ['+', '-', 'add', 'remove']:
+                option = leftover_args.pop(0)
+
+        if user_mentions:
+            for user in user_mentions:
+                leftover_args.pop(0)
+
+        force = None
+        if leftover_args:
+            force = leftover_args.pop(0)
+
+        deny_perms = discord.PermissionOverwrite(connect=False)
+        allow_perms = discord.PermissionOverwrite(connect=True)
+
+        if size:
+            await self.edit_channel(channel, user_limit=size)
+
+        if user_mentions:
+            for user in user_mentions:
+                await self.edit_channel_permissions(channel, discord.utils.find(lambda m : m.id == user.id, message.server.members), allow_perms if option in ['+', 'add'] else deny_perms)
+                if force in ['-f', '-force']:
+                    if option in ['+', 'add']:
+                        await self.move_member(discord.utils.find(lambda m : m.id == user.id, message.server.members), channel)
+                    elif channel.server.afk_channel:
+                        await self.move_member(discord.utils.find(lambda m : m.id == user.id, message.server.members), channel.server.afk_channel)
+
+        await self.safe_delete_message(message, quiet=True)
+
+        return Response(
+            'Edited voice channel %s' % (channel.mention),
             reply=True, delete_after=10
         )
 
