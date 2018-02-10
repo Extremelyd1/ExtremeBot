@@ -763,6 +763,9 @@ class MusicBot(discord.Client):
         elif 'twitch' in entry.url:
             em = discord.Embed(colour=0x6440A5, url=entry.url)
             em.set_author(name=entry.title, url=entry.url, icon_url='http://www.stickpng.com/assets/images/580b57fcd9996e24bc43c540.png')
+        elif 'soundcloud' in entry.url:
+            em = discord.Embed(colour=0xFF6A22, url=entry.url)
+            em.set_author(name=entry.title, url=entry.url, icon_url='http://www.logospike.com/wp-content/uploads/2014/11/Soundcloud_logo-5.png')
         else:
             em = discord.Embed(colour=0xFFFFFF, url=entry.url)
             em.set_author(name=entry.title, url=entry.url)
