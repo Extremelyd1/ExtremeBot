@@ -73,6 +73,8 @@ class MusicBot(discord.Client):
         self.permissions = Permissions(perms_file, grant_all=[self.config.owner_id])
         self.str = Json(self.config.i18n_file)
 
+        self.channels = []
+
         self.blacklist = set(load_file(self.config.blacklist_file))
         self.autoplaylist = load_file(self.config.auto_playlist_file)
 
@@ -95,6 +97,7 @@ class MusicBot(discord.Client):
         # TODO: Do these properly
         ssd_defaults = {
             'last_np_msg': None,
+            'last_np_embed': None,
             'auto_paused': False,
             'availability_paused': False
         }
@@ -323,6 +326,10 @@ class MusicBot(discord.Client):
     async def _manual_delete_check(self, message, *, quiet=False):
         if self.config.delete_invoking:
             await self.safe_delete_message(message, quiet=quiet)
+
+    async def _wait_delete_channel(self, channel_id, server, after, quiet=False):
+        await asyncio.sleep(after)
+        await self.safe_delete_channel(channel_id, server, quiet)
 
     async def _check_ignore_non_voice(self, msg):
         vc = msg.server.me.voice_channel
@@ -616,37 +623,39 @@ class MusicBot(discord.Client):
         if self.config.write_current_song:
             await self.write_current_song(player.voice_client.channel.server, entry)
 
-        channel = entry.meta.get('channel', None)
-        author = entry.meta.get('author', None)
+        await self.update_now_playing_message(player, entry)
 
-        if channel and author:
-            last_np_msg = self.server_specific_data[channel.server]['last_np_msg']
-            if last_np_msg and last_np_msg.channel == channel:
-
-                async for lmsg in self.logs_from(channel, limit=1):
-                    if lmsg != last_np_msg and last_np_msg:
-                        await self.safe_delete_message(last_np_msg)
-                        self.server_specific_data[channel.server]['last_np_msg'] = None
-                    break  # This is probably redundant
-
-
-            author_perms = self.permissions.for_user(author)
-
-            if author not in player.voice_client.channel.voice_members and author_perms.skip_when_absent:
-                newmsg = 'Skipping next song in `%s`: `%s` added by `%s` as queuer not in voice' % (
-                    player.voice_client.channel.name, entry.title, entry.meta['author'].name)
-                player.skip()
-            elif self.config.now_playing_mentions:
-                newmsg = '%s - your song `%s` is now playing in `%s`!' % (
-                    entry.meta['author'].mention, entry.title, player.voice_client.channel.name)
-            else:
-                newmsg = 'Now playing in `%s`: `%s` added by `%s`' % (
-                    player.voice_client.channel.name, entry.title, entry.meta['author'].name)
-
-            if self.server_specific_data[channel.server]['last_np_msg']:
-                self.server_specific_data[channel.server]['last_np_msg'] = await self.safe_edit_message(last_np_msg, newmsg, send_if_fail=True)
-            else:
-                self.server_specific_data[channel.server]['last_np_msg'] = await self.safe_send_message(channel, newmsg)
+        # channel = entry.meta.get('channel', None)
+        # author = entry.meta.get('author', None)
+        #
+        # if channel and author:
+        #     last_np_msg = self.server_specific_data[channel.server]['last_np_msg']
+        #     if last_np_msg and last_np_msg.channel == channel:
+        #
+        #         async for lmsg in self.logs_from(channel, limit=1):
+        #             if lmsg != last_np_msg and last_np_msg:
+        #                 await self.safe_delete_message(last_np_msg)
+        #                 self.server_specific_data[channel.server]['last_np_msg'] = None
+        #             break  # This is probably redundant
+        #
+        #
+        #     author_perms = self.permissions.for_user(author)
+        #
+        #     if author not in player.voice_client.channel.voice_members and author_perms.skip_when_absent:
+        #         newmsg = 'Skipping next song in `%s`: `%s` added by `%s` as queuer not in voice' % (
+        #             player.voice_client.channel.name, entry.title, entry.meta['author'].name)
+        #         player.skip()
+        #     elif self.config.now_playing_mentions:
+        #         newmsg = '%s - your song `%s` is now playing in `%s`!' % (
+        #             entry.meta['author'].mention, entry.title, player.voice_client.channel.name)
+        #     else:
+        #         newmsg = 'Now playing in `%s`: `%s` added by `%s`' % (
+        #             player.voice_client.channel.name, entry.title, entry.meta['author'].name)
+        #
+        #     if self.server_specific_data[channel.server]['last_np_msg']:
+        #         self.server_specific_data[channel.server]['last_np_msg'] = await self.safe_edit_message(last_np_msg, newmsg, send_if_fail=True)
+        #     else:
+        #         self.server_specific_data[channel.server]['last_np_msg'] = await self.safe_send_message(channel, newmsg)
 
         # TODO: Check channel voice state?
 
@@ -777,37 +786,107 @@ class MusicBot(discord.Client):
                 await self.change_presence(game=game)
                 self.last_status = game
 
-    async def update_now_playing_message(self, server, message, *, channel=None):
-        lnp = self.server_specific_data[server]['last_np_msg']
-        m = None
+    async def update_now_playing_message(self, player, entry, server=None, *, channel=None):
+        if not channel:
+            channel = self.get_channel(self.config.main_channel)
+        if not server:
+            server = channel.server;
 
-        if message is None and lnp:
-            await self.safe_delete_message(lnp, quiet=True)
+        if player.current_entry:
 
-        elif lnp:  # If there was a previous lp message
-            oldchannel = lnp.channel
+            newembed = await self.create_now_playing(entry)
 
-            if lnp.channel == oldchannel:  # If we have a channel to update it in
-                async for lmsg in self.logs_from(channel, limit=1):
-                    if lmsg != lnp and lnp:  # If we need to resend it
-                        await self.safe_delete_message(lnp, quiet=True)
-                        m = await self.safe_send_message(channel, message, quiet=True)
-                    else:
-                        m = await self.safe_edit_message(lnp, message, send_if_fail=True, quiet=False)
+            stream = False
+            if isinstance(entry, StreamPlaylistEntry):
+                stream = True
 
-            elif channel: # If we have a new channel to send it to
-                await self.safe_delete_message(lnp, quiet=True)
-                m = await self.safe_send_message(channel, message, quiet=True)
+            last_np_msg = self.server_specific_data[channel.server]['last_np_msg']
 
-            else:  # we just resend it in the old channel
-                await self.safe_delete_message(lnp, quiet=True)
-                m = await self.safe_send_message(oldchannel, message, quiet=True)
+            if last_np_msg:
+                self.server_specific_data[channel.server]['last_np_msg'] = await self.safe_edit_message(last_np_msg, new=newembed, send_if_fail=True)
+            else:
+                self.server_specific_data[channel.server]['last_np_msg'] = await self.safe_send_message(channel, content=newembed)
 
-        elif channel: # No previous message
-            m = await self.safe_send_message(channel, message, quiet=True)
+            self.server_specific_data[channel.server]['last_np_embed'] = newembed
 
-        self.server_specific_data[server]['last_np_msg'] = m
+        # lnp = self.server_specific_data[server]['last_np_msg']
+        # m = None
+        #
+        # if message is None and lnp:
+        #     await self.safe_delete_message(lnp, quiet=True)
+        #
+        # elif lnp:  # If there was a previous lp message
+        #     oldchannel = lnp.channel
+        #
+        #     if lnp.channel == oldchannel:  # If we have a channel to update it in
+        #         async for lmsg in self.logs_from(channel, limit=1):
+        #             if lmsg != lnp and lnp:  # If we need to resend it
+        #                 await self.safe_delete_message(lnp, quiet=True)
+        #                 m = await self.safe_send_message(channel, message, quiet=True)
+        #             else:
+        #                 m = await self.safe_edit_message(lnp, message, send_if_fail=True, quiet=False)
+        #
+        #     elif channel: # If we have a new channel to send it to
+        #         await self.safe_delete_message(lnp, quiet=True)
+        #         m = await self.safe_send_message(channel, message, quiet=True)
+        #
+        #     else:  # we just resend it in the old channel
+        #         await self.safe_delete_message(lnp, quiet=True)
+        #         m = await self.safe_send_message(oldchannel, message, quiet=True)
+        #
+        # elif channel: # No previous message
+        #     m = await self.safe_send_message(channel, message, quiet=True)
+        #
+        # self.server_specific_data[server]['last_np_msg'] = m
 
+    async def create_now_playing(self, entry):
+
+        youtube_url_id = None
+        if 'youtu.be' in entry.url:
+            youtube_url_id = entry.url.split('outu.be/')[1]
+            em = discord.Embed(colour=0xFF0000, url=entry.url)
+            em.set_author(name=entry.title, url=entry.url, icon_url='http://i.imgur.com/QU6GAqz.png')
+        elif 'youtube' in entry.url:
+            youtube_url_id = entry.url.split('watch?v=')[1].split('&')[0]
+            em = discord.Embed(colour=0xFF0000, url=entry.url)
+            em.set_author(name=entry.title, url=entry.url, icon_url='http://i.imgur.com/QU6GAqz.png')
+        elif 'twitch' in entry.url:
+            em = discord.Embed(colour=0x6440A5, url=entry.url)
+            em.set_author(name=entry.title, url=entry.url, icon_url='http://www.stickpng.com/assets/images/580b57fcd9996e24bc43c540.png')
+        elif 'soundcloud' in entry.url:
+            em = discord.Embed(colour=0xFF6A22, url=entry.url)
+            em.set_author(name=entry.title, url=entry.url, icon_url='http://www.logospike.com/wp-content/uploads/2014/11/Soundcloud_logo-5.png')
+        else:
+            em = discord.Embed(colour=0xFFFFFF, url=entry.url)
+            em.set_author(name=entry.title, url=entry.url)
+
+        if youtube_url_id:
+            em.set_thumbnail(url='https://img.youtube.com/vi/%s/maxresdefault.jpg' % youtube_url_id)
+
+        duration = str(timedelta(seconds=entry.duration)).lstrip('0').lstrip(':')
+
+        if isinstance(entry, StreamPlaylistEntry):
+            duration = '-'
+
+        em.add_field(name='Length:', value=duration, inline=True)
+
+        channel = None
+        if self.config.main_channel:
+            channel = self.get_channel(self.config.main_channel)
+
+        if not channel:
+            channel = entry.meta.get('channel', None)
+
+        paused = self.server_specific_data[channel.server]['auto_paused']
+
+        em.add_field(name='Status:', value='Paused' if paused else 'Playing', inline=True)
+
+        author = entry.meta.get('author', None)
+
+        if author:
+            em.set_footer(text='Requested by %s' % author.name, icon_url=author.avatar_url)
+
+        return em
 
     async def serialize_queue(self, server, *, dir=None):
         """
@@ -976,13 +1055,40 @@ class MusicBot(discord.Client):
         lfunc = log.debug if quiet else log.warning
 
         try:
-            return await self.edit_message(message, new)
+            if isinstance(new, discord.Embed):
+                return await self.edit_message(message, embed=new)
+            else:
+                return await self.edit_message(message, new)
 
         except discord.NotFound:
             lfunc("Cannot edit message \"{}\", message not found".format(message.clean_content))
             if send_if_fail:
                 lfunc("Sending message instead")
                 return await self.safe_send_message(message.channel, new)
+
+    async def safe_delete_channel(self, channel_id, server, quiet=False):
+
+        quiet = True # Temporary fix
+
+        channel = discord.utils.find(lambda c: c.id == channel_id, server.channels)
+
+        if not channel:
+            return
+
+        if len(channel.voice_members) == 0:
+            try:
+                await self.delete_channel(channel)
+                self.channels.remove(channel_id)
+                log.debug("Deleted channel \"%s\" due to inactivity" % channel.id)
+            except discord.Forbidden:
+                if not quiet:
+                    log.info("Warning: Cannot delete channel \"%s\", no permission" % channel.id)
+
+            except discord.NotFound:
+                if not quiet:
+                    log.info("Warning: Cannot delete channel \"%s\", channel not found" % channel.id)
+        else:
+            log.debug("No deletion of \"%s\", still active" % channel.id)
 
     async def send_typing(self, destination):
         try:
@@ -1203,6 +1309,13 @@ class MusicBot(discord.Client):
 
         print(flush=True)
 
+        main_channel = None
+        if self.config.main_channel:
+            main_channel = self.get_channel(self.config.main_channel)
+
+        await self.cmd_clean(None, main_channel, main_channel.server, main_channel.server.get_member(self.config.owner_id), search_range=1000, quiet=True)
+
+
         await self.update_now_playing_status()
 
         # maybe option to leave the ownerid blank and generate a random command for the owner to use
@@ -1223,8 +1336,10 @@ class MusicBot(discord.Client):
         """Provides a basic template for embeds"""
         e = discord.Embed()
         e.colour = 7506394
-        e.set_footer(text='Just-Some-Bots/MusicBot ({})'.format(BOTVERSION), icon_url='https://i.imgur.com/gFHBoZA.png')
-        e.set_author(name=self.user.name, url='https://github.com/Just-Some-Bots/MusicBot', icon_url=self.user.avatar_url)
+        e.set_footer(text='ExtremeBot ({})'.format(BOTVERSION))
+        #e.set_footer(text='Just-Some-Bots/MusicBot ({})'.format(BOTVERSION), icon_url='https://i.imgur.com/gFHBoZA.png')
+        e.set_author(name=self.user.name, url='https://github.com/Extremelyd1/ExtremeBot', icon_url=self.user.avatar_url)
+        #e.set_author(name=self.user.name, url='https://github.com/Just-Some-Bots/MusicBot', icon_url=self.user.avatar_url)
         return e
 
     async def cmd_resetplaylist(self, player, channel):
@@ -1360,6 +1475,141 @@ class MusicBot(discord.Client):
                 raise exceptions.CommandError(self.str.get('cmd-save-exists', 'This song is already in the autoplaylist.'))
         else:
             raise exceptions.CommandError(self.str.get('cmd-save-invalid', 'There is no valid song playing.'))
+
+    @owner_only
+    async def cmd_cc(self, message, user_mentions, leftover_args):
+        """
+        Usage:
+            {command_prefix}createchannel [size] @UserName [@UserName2 ...]
+        Creates a channel with designated size and join permissions for mentioned users.
+        """
+
+        return await self.cmd_createchannel(message, user_mentions, leftover_args)
+
+    @owner_only
+    async def cmd_createchannel(self, message, user_mentions, leftover_args):
+        """
+        Usage:
+            {command_prefix}createchannel [size] @UserName [@UserName2 ...]
+        Creates a channel with designated size and join permissions for mentioned users.
+        """
+
+        size = None
+        if leftover_args:
+            if leftover_args[0].isdigit():
+                size = leftover_args.pop(0)
+
+        if user_mentions:
+            for user in user_mentions:
+                leftover_args.pop(0)
+
+        force = None
+        if leftover_args:
+            force = leftover_args.pop(0)
+
+        deny_perms = discord.PermissionOverwrite(connect=False)
+        allow_perms = discord.PermissionOverwrite(connect=True)
+
+        channel = await self.create_channel(message.server, 'Private-%s' % (len(self.channels) + 1), (message.server.default_role, deny_perms), (message.author, allow_perms), type=discord.ChannelType.voice) # TODO: Add permissions based on mentions
+
+        if size:
+            await self.edit_channel(channel, user_limit=size)
+
+        if user_mentions:
+            for user in user_mentions:
+                await self.edit_channel_permissions(channel, discord.utils.find(lambda m : m.id == user.id, message.server.members), allow_perms)
+                if force in ['-f', '-force']:
+                    await self.move_member(discord.utils.find(lambda m : m.id == user.id, message.server.members), channel)
+
+        await self.move_channel(channel, 1)
+
+        self.channels.append(channel.id)
+
+        log.debug('Queued channel "%s" for deletion' % channel.id)
+        asyncio.ensure_future(self._wait_delete_channel(channel.id, channel.server, 30))
+
+        await self.safe_delete_message(message, quiet=True)
+
+        return Response(
+            'Created voice channel %s' % (channel.mention),
+            reply=True, delete_after=10
+        )
+
+    @owner_only
+    async def cmd_ec(self, message, user_mentions, leftover_args):
+        """
+        Usage:
+            {command_prefix}editchannel #channelName [size] [ + | - | add | remove ] [@UserName @UserName2 ...]
+        Edits a created channel to designated size or add/remove join permissions for mentioned users.
+        """
+
+        return await self.cmd_editchannel(message, user_mentions, leftover_args)
+
+    @owner_only
+    async def cmd_editchannel(self, message, user_mentions, leftover_args):
+        """
+        Usage:
+            {command_prefix}editchannel #channelName [size] [ + | - | add | remove ] [@UserName @UserName2 ...]
+        Edits a created channel to designated size or add/remove join permissions for mentioned users.
+        """
+
+        if len(leftover_args) < 1:
+            raise exceptions.CommandError("No channel listed.", expire_in=20)
+
+        channel = discord.utils.find(lambda c : c.name == leftover_args[0], message.server.channels)
+
+        if not channel or not channel.type == discord.ChannelType.voice:
+            return Response(
+                '%s could not be recognised as a voice channel' % leftover_args[0],
+                reply=True, delete_after=10
+            )
+
+        if not channel.id in self.channels:
+            raise exceptions.CommandError("Can only edit custom created channel.", expire_in=20)
+
+        leftover_args.pop(0)
+
+        if not leftover_args:
+            raise exceptions.CommandError("Please specify at least size or mention users", expire_in=20)
+
+        size = None
+        if leftover_args[0].isdigit():
+            size = leftover_args.pop(0)
+
+        option = '+'
+        if leftover_args:
+            if leftover_args[0] in ['+', '-', 'add', 'remove']:
+                option = leftover_args.pop(0)
+
+        if user_mentions:
+            for user in user_mentions:
+                leftover_args.pop(0)
+
+        force = None
+        if leftover_args:
+            force = leftover_args.pop(0)
+
+        deny_perms = discord.PermissionOverwrite(connect=False)
+        allow_perms = discord.PermissionOverwrite(connect=True)
+
+        if size:
+            await self.edit_channel(channel, user_limit=size)
+
+        if user_mentions:
+            for user in user_mentions:
+                await self.edit_channel_permissions(channel, discord.utils.find(lambda m : m.id == user.id, message.server.members), allow_perms if option in ['+', 'add'] else deny_perms)
+                if force in ['-f', '-force']:
+                    if option in ['+', 'add']:
+                        await self.move_member(discord.utils.find(lambda m : m.id == user.id, message.server.members), channel)
+                    elif channel.server.afk_channel:
+                        await self.move_member(discord.utils.find(lambda m : m.id == user.id, message.server.members), channel.server.afk_channel)
+
+        await self.safe_delete_message(message, quiet=True)
+
+        return Response(
+            'Edited voice channel %s' % (channel.mention),
+            reply=True, delete_after=10
+        )
 
     @owner_only
     async def cmd_joinserver(self, message, server_link=None):
@@ -1926,9 +2176,8 @@ class MusicBot(discord.Client):
         """
 
         if player.current_entry:
-            if self.server_specific_data[server]['last_np_msg']:
-                await self.safe_delete_message(self.server_specific_data[server]['last_np_msg'])
-                self.server_specific_data[server]['last_np_msg'] = None
+
+            last_np_embed = self.server_specific_data[server]['last_np_embed']
 
             # TODO: Fix timedelta garbage with util function
             song_progress = ftimedelta(timedelta(seconds=player.progress))
@@ -1938,44 +2187,56 @@ class MusicBot(discord.Client):
             prog_str = ('`[{progress}]`' if streaming else '`[{progress}/{total}]`').format(
                 progress=song_progress, total=song_total
             )
-            prog_bar_str = ''
-
-            # percentage shows how much of the current song has already been played
-            percentage = 0.0
-            if player.current_entry.duration > 0:
-                percentage = player.progress / player.current_entry.duration
-
-            # create the actual bar
-            progress_bar_length = 30
-            for i in range(progress_bar_length):
-                if (percentage < 1 / progress_bar_length * i):
-                    prog_bar_str += '□'
-                else:
-                    prog_bar_str += '■'
+            # prog_bar_str = ''
+            #
+            # # percentage shows how much of the current song has already been played
+            # percentage = 0.0
+            # if player.current_entry.duration > 0:
+            #     percentage = player.progress / player.current_entry.duration
+            #
+            # # create the actual bar
+            # progress_bar_length = 30
+            # for i in range(progress_bar_length):
+            #     if (percentage < 1 / progress_bar_length * i):
+            #         prog_bar_str += '□'
+            #     else:
+            #         prog_bar_str += '■'
 
             action_text = self.str.get('cmd-np-action-streaming', 'Streaming') if streaming else self.str.get('cmd-np-action-playing', 'Playing')
 
             if player.current_entry.meta.get('channel', False) and player.current_entry.meta.get('author', False):
-                np_text = self.str.get('cmd-np-reply-author', "Now {action}: **{title}** added by **{author}**\nProgress: {progress_bar} {progress}\n\N{WHITE RIGHT POINTING BACKHAND INDEX} <{url}>").format(
-                    action=action_text,
-                    title=player.current_entry.title,
-                    author=player.current_entry.meta['author'].name,
-                    progress_bar=prog_bar_str,
-                    progress=prog_str,
-                    url=player.current_entry.url
-                )
+                author = player.current_entry.meta.get('author', False)
+                last_np_embed.set_footer(text='Requested by %s' % author.name, icon_url=author.avatar_url)
+                # np_text = self.str.get('cmd-np-reply-author', "Now {action}: **{title}** added by **{author}**\nProgress: {progress_bar} {progress}\n\N{WHITE RIGHT POINTING BACKHAND INDEX} <{url}>").format(
+                #     action=action_text,
+                #     title=player.current_entry.title,
+                #     author=player.current_entry.meta['author'].name,
+                #     progress_bar=prog_bar_str,
+                #     progress=prog_str,
+                #     url=player.current_entry.url
+                # )
             else:
+                last_np_embed.set_footer()
+                # np_text = self.str.get('cmd-np-reply-noauthor', "Now {action}: **{title}**\nProgress: {progress_bar} {progress}\n\N{WHITE RIGHT POINTING BACKHAND INDEX} <{url}>").format(
+                #
+                #     action=action_text,
+                #     title=player.current_entry.title,
+                #     progress_bar=prog_bar_str,
+                #     progress=prog_str,
+                #     url=player.current_entry.url
+                # )
 
-                np_text = self.str.get('cmd-np-reply-noauthor', "Now {action}: **{title}**\nProgress: {progress_bar} {progress}\n\N{WHITE RIGHT POINTING BACKHAND INDEX} <{url}>").format(
+            last_np_embed.set_field_at(1, name='Status', value='%s %s' % (action_text, prog_str))
 
-                    action=action_text,
-                    title=player.current_entry.title,
-                    progress_bar=prog_bar_str,
-                    progress=prog_str,
-                    url=player.current_entry.url
-                )
+            last_np_msg = self.server_specific_data[server]['last_np_msg']
 
-            self.server_specific_data[server]['last_np_msg'] = await self.safe_send_message(channel, np_text)
+            if last_np_msg:
+                self.server_specific_data[server]['last_np_msg'] = await self.safe_edit_message(last_np_msg, new=last_np_embed)
+            else:
+                self.server_specific_data[server]['last_np_msg'] = await self.safe_send_message(channel, content=last_np_embed)
+
+            self.server_specific_data[server]['last_np_embed'] = last_np_embed
+
             await self._manual_delete_check(message)
         else:
             return Response(
@@ -2315,6 +2576,16 @@ class MusicBot(discord.Client):
             else:
                 raise exceptions.CommandError(self.str.get('cmd-option-invalid-param' ,'The parameters provided were invalid.'))
 
+    async def cmd_q(self, channel, player):
+        """
+        Usage:
+            {command_prefix}queue
+
+        Prints the current song queue.
+        """
+
+        return await self.cmd_queue(channel, player)
+
     async def cmd_queue(self, channel, player):
         """
         Usage:
@@ -2365,7 +2636,7 @@ class MusicBot(discord.Client):
         message = '\n'.join(lines)
         return Response(message, delete_after=30)
 
-    async def cmd_clean(self, message, channel, server, author, search_range=50):
+    async def cmd_clean(self, message, channel, server, author, search_range=50, quiet=False):
         """
         Usage:
             {command_prefix}clean [range]
@@ -2379,7 +2650,8 @@ class MusicBot(discord.Client):
         except:
             return Response(self.str.get('cmd-clean-invalid', "Invalid parameter. Please provide a number of messages to search."), reply=True, delete_after=8)
 
-        await self.safe_delete_message(message, quiet=True)
+        if not quiet:
+            await self.safe_delete_message(message, quiet=True)
 
         def is_possible_command_invoke(entry):
             valid_call = any(
@@ -2397,6 +2669,8 @@ class MusicBot(discord.Client):
         if self.user.bot:
             if channel.permissions_for(server.me).manage_messages:
                 deleted = await self.purge_from(channel, check=check, limit=search_range, before=message)
+                if quiet:
+                    return None
                 return Response(self.str.get('cmd-clean-reply', 'Cleaned up {0} message{1}.').format(len(deleted), 's' * bool(deleted)), delete_after=15)
 
     async def cmd_pldump(self, channel, song_url):
@@ -2705,6 +2979,12 @@ class MusicBot(discord.Client):
 
         message_content = message.content.strip()
         if not message_content.startswith(self.config.command_prefix):
+            main_channel = None
+            if self.config.main_channel:
+                main_channel = self.get_channel(self.config.main_channel)
+
+            if main_channel and message.channel == main_channel and not message.author == self.user:
+                await self.safe_delete_message(message, quiet=True)
             return
 
         if message.author == self.user:
@@ -2938,6 +3218,12 @@ class MusicBot(discord.Client):
             dif = state.changes
         ))
 
+        if state.old_voice_channel:
+            if state.old_voice_channel.id in self.channels and state.empty(excluding_me=False, excluding_deaf=False, old_channel=True): # No one in created voice channel
+                log.debug("Queued channel \"%s\" for deletion" % state.old_voice_channel.id)
+                asyncio.ensure_future(self._wait_delete_channel(state.old_voice_channel.id, state.old_voice_channel.server, 10, quiet=True)) # Queue for deletion
+
+
         if not state.is_about_my_voice_channel:
             return # Irrelevant channel
 
@@ -2965,6 +3251,7 @@ class MusicBot(discord.Client):
             ).strip())
 
             self.server_specific_data[after.server]['auto_paused'] = True
+            await self.update_now_playing_message(player, player.current_entry)
             player.pause()
             return
 
@@ -3000,6 +3287,8 @@ class MusicBot(discord.Client):
 
                     self.server_specific_data[after.server]['auto_paused'] = False
                     player.resume()
+
+        await self.update_now_playing_message(player, player.current_entry)
 
     async def on_server_update(self, before:discord.Server, after:discord.Server):
         if before.region != after.region:
