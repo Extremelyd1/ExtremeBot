@@ -842,7 +842,10 @@ class MusicBot(discord.Client):
     async def create_now_playing(self, entry):
 
         youtube_url_id = None
-        if 'youtu.be' in entry.url:
+        if entry.spotify:
+            em = discord.Embed(colour=0x1db954, url=entry.url)
+            em.set_author(name=entry.title, url=entry.url, icon_url='https://i.imgur.com/8pFqvNt.png')
+        elif 'youtu.be' in entry.url:
             youtube_url_id = entry.url.split('outu.be/')[1]
             em = discord.Embed(colour=0xFF0000, url=entry.url)
             em.set_author(name=entry.title, url=entry.url, icon_url='http://i.imgur.com/QU6GAqz.png')
@@ -1660,7 +1663,7 @@ class MusicBot(discord.Client):
             )
         return True
 
-    async def cmd_play(self, message, player, channel, author, permissions, leftover_args, song_url):
+    async def cmd_play(self, message, player, channel, author, permissions, leftover_args, song_url, spotify=False):
         """
         Usage:
             {command_prefix}play song_link
@@ -1695,8 +1698,14 @@ class MusicBot(discord.Client):
         groups = matches.groups() if matches is not None else []
         song_url = "https://www.youtube.com/playlist?" + groups[0] if len(groups) > 0 else song_url
 
-        if song_url.startswith('spotify:'):  # treat it as probably a spotify URI
+        if song_url.startswith('spotify:') or 'https://open.spotify.com' in song_url:  # treat it as probably a spotify URI
             if self.config._spotify:
+
+                if 'open.spotify.com' in song_url:
+                    song_url = song_url.replace('https://open.', '')
+                    song_url = song_url.replace('.com', '')
+                    song_url = song_url.replace('/', ':')
+
                 song_url = song_url.split(":", 1)[1]
                 try:
 
@@ -1704,6 +1713,7 @@ class MusicBot(discord.Client):
                         song_url = song_url.split(":", 1)[1]
                         res = await self.spotify.get_track(song_url)
                         song_url = res['artists'][0]['name'] + ' ' + res['name']  # spooky
+                        spotify = True
 
                     elif song_url.startswith('album:'):
                         song_url = song_url.split(":", 1)[1]
@@ -1713,7 +1723,7 @@ class MusicBot(discord.Client):
                         for i in res['tracks']['items']:
                             song_url = i['name'] + ' ' + i['artists'][0]['name']
                             log.debug('Processing {0}'.format(song_url))
-                            await self.cmd_play(message, player, channel, author, permissions, leftover_args, song_url)
+                            await self.cmd_play(message, player, channel, author, permissions, leftover_args, song_url, spotify=True)
                         await self.safe_delete_message(procmesg)
                         return Response(self.str.get('cmd-play-spotify-album-queued', "Enqueued `{0}` with **{1}** songs.").format(res['name'], len(res['tracks']['items'])))
 
@@ -1726,7 +1736,7 @@ class MusicBot(discord.Client):
                         for i in res['tracks']['items']:
                             song_url = i['track']['name'] + ' ' + i['track']['artists'][0]['name']
                             log.debug('Processing {0}'.format(song_url))
-                            await self.cmd_play(message, player, channel, author, permissions, leftover_args, song_url)
+                            await self.cmd_play(message, player, channel, author, permissions, leftover_args, song_url, spotify=True)
                         await self.safe_delete_message(procmesg)
                         return Response(self.str.get('cmd-play-spotify-playlist-queued', "Enqueued `{0}` with **{1}** songs.").format(res['name'], len(res['tracks']['items'])))
 
@@ -1893,7 +1903,7 @@ class MusicBot(discord.Client):
                     )
 
                 try:
-                    entry, position = await player.playlist.add_entry(song_url, channel=channel, author=author)
+                    entry, position = await player.playlist.add_entry(song_url, spotify=True, channel=channel, author=author)
 
                 except exceptions.WrongEntryTypeError as e:
                     if e.use_url == song_url:

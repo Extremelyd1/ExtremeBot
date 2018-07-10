@@ -79,7 +79,7 @@ class BasePlaylistEntry(Serializable):
 
 
 class URLPlaylistEntry(BasePlaylistEntry):
-    def __init__(self, playlist, url, title, duration=0, expected_filename=None, **meta):
+    def __init__(self, playlist, url, title, duration=0, expected_filename=None, spotify=False, **meta):
         super().__init__()
 
         self.playlist = playlist
@@ -88,6 +88,7 @@ class URLPlaylistEntry(BasePlaylistEntry):
         self.duration = duration
         self.expected_filename = expected_filename
         self.meta = meta
+        self.spotify = spotify
 
         self.download_folder = self.playlist.downloader.download_folder
 
@@ -107,7 +108,8 @@ class URLPlaylistEntry(BasePlaylistEntry):
                     'id': obj.id,
                     'name': obj.name
                 } for name, obj in self.meta.items() if obj
-            }
+            },
+            'spotify': self.spotify
         })
 
     @classmethod
@@ -122,6 +124,7 @@ class URLPlaylistEntry(BasePlaylistEntry):
             downloaded = data['downloaded'] if playlist.bot.config.save_videos else False
             filename = data['filename'] if downloaded else None
             expected_filename = data['expected_filename']
+            spotify = data['spotify']
             meta = {}
 
             # TODO: Better [name] fallbacks

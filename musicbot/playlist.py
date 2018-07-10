@@ -41,13 +41,13 @@ class Playlist(EventEmitter, Serializable):
 
     def clear(self):
         self.entries.clear()
-        
+
     def get_entry_at_index(self, index):
         self.entries.rotate(-index)
         entry = self.entries[0]
         self.entries.rotate(index)
         return entry
-        
+
     def delete_entry_at_index(self, index):
         self.entries.rotate(-index)
         entry = self.entries.popleft()
@@ -55,7 +55,7 @@ class Playlist(EventEmitter, Serializable):
         return entry
 
 
-    async def add_entry(self, song_url, **meta):
+    async def add_entry(self, song_url, spotify=False, **meta):
         """
             Validates and adds a song_url to be played. This does not start the download of the song.
 
@@ -110,6 +110,7 @@ class Playlist(EventEmitter, Serializable):
             info.get('title', 'Untitled'),
             info.get('duration', 0) or 0,
             self.downloader.ytdl.prepare_filename(info),
+            spotify,
             **meta
         )
         self._add_entry(entry)
@@ -372,4 +373,3 @@ class Playlist(EventEmitter, Serializable):
 
         # TODO: create a function to init downloading (since we don't do it here)?
         return pl
-
